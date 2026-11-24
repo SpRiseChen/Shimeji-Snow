@@ -1,0 +1,8 @@
+[
+  { "id": "call",     "keys": "Ctrl+Alt+S", "action": "call",     "enabled": true },
+  { "id": "gather",   "keys": "Ctrl+Alt+G", "action": "gather",   "enabled": true },
+  { "id": "pause",    "keys": "Ctrl+Alt+P", "action": "pause",    "enabled": true },
+  { "id": "settings", "keys": "Ctrl+Alt+O", "action": "settings", "enabled": true },
+  { "id": "photo",    "keys": "Ctrl+Alt+C", "action": "photo",    "enabled": false },
+  { "id": "feed",     "keys": "Ctrl+Alt+F", "action": "feed",     "enabled": true }
+]

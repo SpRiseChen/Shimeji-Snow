@@ -1,0 +1,37 @@
+{
+  "comment": "Shimeji Snow 好感度规则表。本文件只读:程序绝不写入它,运行时状态由 StateHome 定位为 affection.state.json。mod 可以整文件覆盖本文件来调整节奏。unlocks 只供设置页展示,真正的门槛是 behaviors.xml 里 #{mascot.affectionLevel >= N} 条件,改一处要同步另一处。",
+  "version": 1,
+  "enabled": true,
+  "minValue": 0.0,
+  "maxValue": 99999.0,
+  "startValue": 0.0,
+  "tickSeconds": 60,
+  "saveIntervalSeconds": 120,
+  "events": {
+    "pat": {
+      "gain": 3.0,
+      "cooldownSeconds": 30,
+      "maxPerDay": 60.0
+    },
+    "feed": {
+      "gain": 10.0,
+      "cooldownSeconds": 300,
+      "maxPerDay": 80.0
+    },
+    "company": {
+      "gainPerHour": 8.0,
+      "maxPerDay": 40.0,
+      "minMascots": 1
+    }
+  },
+  "levels": [
+    { "level": 0, "at": 0.0, "name": "Lv.0" },
+    { "level": 1, "at": 100.0, "name": "Lv.1" },
+    { "level": 2, "at": 300.0, "name": "Lv.2" },
+    { "level": 3, "at": 1000.0, "name": "Lv.3" }
+  ],
+  "unlocks": [
+    { "level": 2, "behavior": "ApproachCursor" },
+    { "level": 3, "behavior": "WatchCursor" }
+  ]
+}

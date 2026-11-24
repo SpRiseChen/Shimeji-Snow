@@ -1,0 +1,29 @@
+Shimeji Snow — Mod 使用指南
+
+安装
+把一个 Mod 文件夹放进 EXE 同级的 mods/，开发运行时放进主工程 mods/。
+重启程序后生效。删除该文件夹即可卸载，不会覆盖基础安装文件。
+设置中心的 Mods 页可以禁用和排序；这些修改在下次启动生效。
+order.txt 每行一个文件夹名，上方先应用，冲突时下方优先。
+Mod 内存在 DISABLED 普通文件时禁用该 Mod。
+
+Mod 结构
+mod.json 可包含 name、version、app_version，用于展示名称和版本。
+img/<角色>/ 用于新增角色；当前标准为 37 张 256×256 透明帧及角色级动作覆盖。
+conf/actions.d/*.xml 和 behaviors.d/*.xml 用于动作/行为片段。
+conf/language.d/<名称>_zh.properties / <名称>_en.properties 用于语言片段。
+conf/theme/ 下的 FlatLaf 主题文件可改变颜色和形制。
+conf/gesture.properties、affection.json、dialogue.properties 可整文件覆盖。
+设置、用户进度、热键、窗口点位、程序和运行时等受保护，不能被文件 Mod 覆盖。
+
+代码插件
+JAR 放在 Mod 的 plugins/，根目录须包含 plugin.json。
+额外库放 plugins/lib/。插件可读取设置、观察事件和操作角色。
+插件以当前用户权限运行，仅安装可信来源。
+conf/plugins.properties 中 <插件ID>.enabled=false 可关闭指定插件。
+安全模式跳过全部 Mod 和插件。
+
+示例与开发
+发行包 app/examples/ 提供角色结构、语言片段和插件源码示例。
+源码 documents/mod-and-plugin-api.md 给出 API v1、片段顺序及拒绝清单。
+只分发已获授权的素材，并保留适用的许可证。

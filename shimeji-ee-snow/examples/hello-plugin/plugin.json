@@ -1,0 +1,8 @@
+{
+  "id": "snow.hello",
+  "name": "Hello Plugin",
+  "version": "1.0.0",
+  "api_version": 1,
+  "main": "snowexample.HelloPlugin",
+  "hooks": [ "pat", "mascot", "settings" ]
+}

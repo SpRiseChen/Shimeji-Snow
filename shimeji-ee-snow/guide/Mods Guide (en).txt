@@ -1,0 +1,31 @@
+Shimeji Snow — Mods Guide
+
+Installation
+Place each mod folder in mods/ next to the EXE. For source runs, use mods/ in
+the main application project. Restart to apply. Remove the folder to uninstall;
+mods do not overwrite the base installation. Settings can disable or reorder
+mods for the next startup. order.txt lists one folder per line, applied from
+top to bottom; later mods win conflicts. A regular DISABLED file disables a mod.
+
+Layout
+mod.json may contain name, version and app_version for display.
+img/<Set>/ adds a character: 37 transparent 256x256 frames plus a matching
+character-level actions.xml override and information file.
+conf/actions.d/*.xml and behaviors.d/*.xml add action/behavior fragments.
+conf/language.d/<name>_en.properties and <name>_zh.properties add language keys.
+conf/theme/ files provide FlatLaf theme colors and shapes.
+gesture.properties, affection.json and dialogue.properties support whole-file
+overrides. User progress, settings, shortcuts, window rules, application binaries
+and runtime files are protected from file mods.
+
+Code plugins
+Place plugin JARs in a mod's plugins/ directory, with plugin.json at each JAR's
+root. Extra libraries go in plugins/lib/. Plugins can observe events, read
+settings and operate mascots. They run with your user permissions: use trusted
+sources. Set <plugin-id>.enabled=false in conf/plugins.properties to disable
+one plugin. Recovery safe mode skips all mods and plugins.
+
+Examples and development
+app/examples/ includes character layout, language and plugin source examples.
+Source documents/mod-and-plugin-api.md describes API v1 and merge semantics.
+Distribute only authorized assets and retain applicable license notices.

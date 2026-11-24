@@ -1,0 +1,137 @@
+package com.group_finity.mascot.win;
+
+import java.awt.Graphics;
+import java.awt.Component;
+import java.awt.GraphicsConfiguration;
+import java.awt.Rectangle;
+import javax.swing.JWindow;
+
+import com.group_finity.mascot.image.NativeImage;
+import com.group_finity.mascot.image.TranslucentWindow;
+import com.group_finity.mascot.win.jna.BLENDFUNCTION;
+import com.group_finity.mascot.win.jna.Gdi32;
+import com.group_finity.mascot.win.jna.POINT;
+import com.group_finity.mascot.win.jna.SIZE;
+import com.group_finity.mascot.win.jna.User32;
+import com.sun.jna.Native;
+import com.sun.jna.Pointer;
+
+/**
+ * The image window with alpha.
+ * {@link #setImage(WindowsNativeImage)} set in {@link WindowsNativeImage} can be displayed on the desktop.
+ *
+ * {@link #setAlpha(int)} may be specified when the concentration of view.
+ *
+ * Original Author: Yuki Yamada of Group Finity (http://www.group-finity.com/Shimeji/)
+ * Currently developed by Shimeji-ee Group.
+ */
+class WindowsTranslucentWindow extends JWindow implements TranslucentWindow {
+
+	private static final long serialVersionUID = 1L;
+
+	@Override
+	public Component asComponent() {
+		return this;
+	}
+
+	/**
+	 * Draw a picture with a value of alpha.
+	 * @param imageHandle bitmap handle.
+	 * @param alpha concentrations shown. 0 = not at all, 255 = full display.
+	 */
+	private void paint(final Pointer imageHandle, final int alpha) {
+
+		final Pointer hWnd = Native.getComponentPointer(this);
+
+		if ( User32.INSTANCE.IsWindow(hWnd)!=0 ) {
+
+			final int exStyle = User32.INSTANCE.GetWindowLongW(hWnd, User32.GWL_EXSTYLE);
+			if ( (exStyle&User32.WS_EX_LAYERED)==0 ) {
+				User32.INSTANCE.SetWindowLongW(hWnd, User32.GWL_EXSTYLE, exStyle | User32.WS_EX_LAYERED);
+			}
+
+			// Create a DC source of the image
+			final Pointer clientDC = User32.INSTANCE.GetDC(hWnd);
+			final Pointer memDC = Gdi32.INSTANCE.CreateCompatibleDC(clientDC);
+			final Pointer oldBmp = Gdi32.INSTANCE.SelectObject(memDC, imageHandle );
+
+			User32.INSTANCE.ReleaseDC(hWnd, clientDC);
+
+			// Destination Area — HiDPI:AWT 逻辑 bounds 按所在显示器缩放换算成物理像素,
+			// UpdateLayeredWindow 的位置/尺寸均为物理;位图本体保持图像像素尺寸,由 ULW 拉伸
+			final Rectangle bounds = getBounds();
+			final GraphicsConfiguration gc = getGraphicsConfiguration();
+			final double scaleX = DpiScale.of( gc );
+			final double scaleY = gc != null ? gc.getDefaultTransform().getScaleY() : 1.0;
+
+			// Forward
+			final BLENDFUNCTION bf = new BLENDFUNCTION();
+			bf.BlendOp = BLENDFUNCTION.AC_SRC_OVER;
+			bf.BlendFlags = 0;
+			bf.SourceConstantAlpha = (byte)alpha; // Level set
+			bf.AlphaFormat = BLENDFUNCTION.AC_SRC_ALPHA;
+
+			final POINT lt = new POINT();
+			lt.x = (int)Math.round( bounds.x * scaleX );
+			lt.y = (int)Math.round( bounds.y * scaleY );
+			final SIZE size = new SIZE();
+			size.cx = (int)Math.round( bounds.width * scaleX );
+			size.cy = (int)Math.round( bounds.height * scaleY );
+			final POINT zero = new POINT();
+			User32.INSTANCE.UpdateLayeredWindow(
+					hWnd, Pointer.NULL,
+					lt, size,
+					memDC, zero, 0, bf, User32.ULW_ALPHA );
+
+			// Replace the bitmap you
+			Gdi32.INSTANCE.SelectObject(memDC, oldBmp);
+			Gdi32.INSTANCE.DeleteDC(memDC);
+		}
+	}
+
+	/**
+	 * Image to display.
+	 */
+	private WindowsNativeImage image;
+
+	/**
+	 * The concentration shown. 0 = not at all, 255 = full display.
+	 */
+	private int alpha = 255;
+
+	@Override
+	public String toString() {
+		return "LayeredWindow[hashCode="+hashCode()+",bounds="+getBounds()+"]";
+	}
+	
+	@Override
+	public void paint(final Graphics g) {
+		if (getImage() != null) {
+			// JNI with drawing images using the a value.
+			paint(getImage().getHandle(), getAlpha());
+		}
+	}
+
+	private WindowsNativeImage getImage() {
+		return this.image;
+	}
+
+	public void setImage(final NativeImage image) {
+		this.image = (WindowsNativeImage)image;
+	}
+
+	public int getAlpha() {
+		return this.alpha;
+	}
+
+	public void setAlpha(final int alpha) {
+		this.alpha = alpha;
+		// 立即以新浓度重绘(SourceConstantAlpha 在 paint 时生效)
+		repaint();
+	}
+
+        @Override
+	public void updateImage() {
+		repaint();
+	}
+}

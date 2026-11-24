@@ -1,0 +1,65 @@
+# 系统架构
+
+## 技术栈与模块
+
+主程序使用 JDK 21、Gradle 8.14.3、Swing、JNA / jna-platform 5.19.1、FlatLaf 3.7.2、nashorn-core 15.7 和 Gson 2.11.0。Gradle 将核心和三个平台目录合并编译；依赖由 Maven 仓库获取，不维护本地 `lib/`。
+
+| 模块 | 职责 |
+|---|---|
+| `Main`、`Manager`、`Mascot` | 启动与退出、角色生命周期、逻辑时钟、单只角色状态 |
+| `action/`、`animation/`、`behavior/`、`script/` | XML 驱动动作、动画与行为选择，Nashorn 表达式 |
+| `config/` | 配置级联、XML 解析、默认设置与用户设置 |
+| `environment/`、`image/` | 桌面区域、角色环境、图像加载、方向镜像与渲染 |
+| `hotspot/`、`gesture/` | 热点、按压/摩擦/拖拽分类、摸头动画 |
+| `affection/`、`dialogue/` | 好感度结算与持久化、提醒和告别气泡 |
+| `hotkey/`、`menu/`、`ui/` | 快捷键接口、托盘与右键菜单、设置和主题 |
+| `mod/`、`mod/plugin/` | 文件叠加、片段合并、插件发现与事件 API |
+| `sound/`、`imagesetchooser/` | 音效、角色选择与角色信息 |
+| `src_win/` | Windows 透明绘制、窗口枚举、DPI、全局鼠标/热键、开机启动 |
+| `src_generic/`、`src_virtual/` | 通用实现和窗口内容区模式 |
+
+`com.joconner.i18n` 提供语言资源装载支持；`hqx` 提供图像缩放滤镜。
+
+## 启动与生命周期
+
+入口 `com.group_finity.mascot.Main` 安装日志、单实例锁和崩溃恢复，读取默认/用户设置，初始化平台与主题，建立 Mod 叠加和插件环境，再创建角色。正常启动显示角色选择器，上次选择用于预选；取消则退出。安全模式跳过 Mod 和插件，使用默认 `Recovery.ImageSet=Acacia`，并禁止保存设置与好感度状态。
+
+`Manager` 使用固定 40ms（25Hz）逻辑拍推进动作，渲染器使用独立时钟插值位置，默认 60 FPS。拖拽、传送及需要立即定位的情况直接同步位置。插件的角色增删事件在 tick 采纳队列后、角色锁外发出。
+
+正常退出先显示告别，再停止动作、保存状态、关闭插件与平台资源。系统记录本会话被角色移动的窗口；退出时归还仍完全离屏且未被用户重新定位的窗口，原显示器不可用时夹回当前工作区。这份记录仅在内存中，强制终止不会执行归还。
+
+## 坐标与绘制
+
+核心的屏幕、鼠标、角色锚点、工作区和气泡均使用 AWT 逻辑坐标。Win32 物理像素只在 `src_win` 的 `DpiScale` 与原生绘制边界换算。窗口矩形按所在显示器换回逻辑坐标，DIB 位图按显示设备需求分配，避免高 DPI 下源位图不足导致透明窗不显示。
+
+Java 和 FlatLaf 已按系统 DPI 缩放 UI。`MenuDPI` 是额外的字体比例，96 表示 1 倍；统一由 `MenuScaling` 解析，不直接把真实屏幕 DPI 再乘到组件尺寸上。`-Dsun.java2d.uiScale` 只能模拟 AWT 缩放，不能覆盖真实显示器 DPI 组合的验收。
+
+窗口模式使用内容区内部的 `(0,0,width,height)` 作为活动区域，鼠标与角色子组件同属内容区坐标。不要使用带父容器偏移的组件 bounds 代替。
+
+## 路径、状态与安全边界
+
+`AppHome` 优先使用 `-Dsnow.home`，其次使用包含 `conf/` 的主类所在目录，否则回退工作目录。`AppHome.get(first, more)` 先整体拼接相对路径，再相对根目录解析，并按需查询 Mod 叠加。不要依赖启动器的当前工作目录。
+
+`StateHome` 定位设置与好感度：默认 `%APPDATA%\ShimejiSnow\`；显式 `snow.home` 或缺少 APPDATA 时使用 `<home>/conf/`。旧安装目录中的状态只在目标缺失时复制迁入，旧文件保留。快捷键、窗口点位和插件开关仍是安装目录下的便携配置。
+
+`SafeFiles` 检查现存链接路径，关键输出避免跟随符号链接或 junction，设置与进度使用随机临时文件及原子替换。删除接口只接受具体普通文件。`SafeXml` 禁用 DOCTYPE、外部实体、外部 DTD/schema 和 XInclude；行为脚本限制按类名导入 Java 类。这些保护不是针对 Java 插件的权限沙箱。
+
+单实例锁位于 `%LOCALAPPDATA%\ShimejiSnow\instance.lock`；`run.flag` 用于恢复提示。启动日志在 `%TEMP%\ShimejiSnow_launch.log`，常规日志由 `conf/logging.properties` 控制。
+
+## 配置与业务机制
+
+角色配置按 `img/<Set>/conf/` → `conf/<Set>/` → 全局 `conf/` 查找。图片根据角色级 `actions.xml` 的锚点定位；当前内置角色为 256×256，使用相对全局 128 配置成倍换算的动作覆盖。
+
+`Grip` 延迟判断热点按压：摩擦触发摸头、按住触发自动摸头、大位移交给拖拽。`HeadPatDirector` 驱动站姿/坐姿偏头并在结束时返回相应休息姿势。阈值在 `gesture.properties`。
+
+好感度是用户与全部角色共享的一份值。摸头、喂食、在线陪伴增加进度，交互有冷却与每日上限；不因冷落扣除。规则来自只读 `affection.json`，进度来自 `affection.state.json`。`Mascot.getAffection()` / `getAffectionLevel()` 提供行为条件，`mascot.variables` 仅镜像兼容数据。默认 Lv.2 靠近鼠标、Lv.3 看鼠标。
+
+对话规则来自 `dialogue.properties`，台词来自语言包：活动提醒每 30 分钟、喝水每 45 分钟、退出告别 3 秒。全场只有一个气泡通道，同时触发时依次显示；隐藏或离屏期间不堆积全部错过周期。气泡监听角色组件移动、缓存文字布局，在单屏可用工作区内定位，不抢输入焦点，点击可关闭。
+
+## 界面与扩展
+
+主题入口统一为 `ThemeInstaller`。默认 Scatter 使用 Zinc 灰白背景、白色卡片和蓝色强调；另有 light / dark。`Brand` 门面读取颜色令牌，`BrandStyle` / `ScatterStyle` 管理形状与动效，自绘组件不使用界面小图标。尊重 ReduceMotion。
+
+FlatLaf 按 L&F 类名装载 properties。每份主题需定义自己的形制键；主题目录注册不递归，基础目录先注册，Mod 后注册。失败时清理注册并回退原味 FlatLaf，不能仅凭已安装的 L&F 类型判断装载成功。
+
+Mod 以虚拟叠加实现文件覆盖，不复制到安装目录；动作、行为和语言支持片段合并。插件 API v1 通过钩子提供摸头、角色增删、设置变更、角色操作和查询；插件加载失败相互隔离，随进程存活。规格见 [Mod 与插件](mod-and-plugin-api.md)。

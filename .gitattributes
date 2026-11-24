@@ -1,0 +1,13 @@
+* text=auto eol=lf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+# Keep the UTF-8 BOM in PowerShell scripts for Windows PowerShell 5.1.
+*.ps1 text eol=lf
+*.png binary
+*.gif binary
+*.jpg binary
+*.ico binary
+*.cur binary
+*.ttf binary
+*.jar binary
+*.zip binary

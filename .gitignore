@@ -1,24 +1,60 @@
-# Compiled class file
+# Build outputs and downloaded runtimes
+**/.gradle/
+**/build/
+**/out/
+**/target/
+**/dist/
+/release/
+node_modules/
 *.class
-
-# Log file
-*.log
-
-# BlueJ files
-*.ctxt
-
-# Mobile Tools for Java (J2ME)
-.mtj.tmp/
-
-# Package Files #
 *.jar
-*.war
-*.nar
-*.ear
+!**/gradle/wrapper/gradle-wrapper.jar
+*.exe
+*.msi
 *.zip
-*.tar.gz
+*.7z
 *.rar
+*.tar.gz
+**/runtime/
+**/jre/
 
-# virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
+# Local settings, progress, mods and editor projects
+**/conf/settings.properties
+**/conf/settings.properties.orig
+**/conf/preferences.properties
+**/conf/affection.state.json
+**/conf/plugins.properties
+**/conf/*.backup
+**/conf/cache/
+**/mods/
+**/plugindata/
+**/speech/
+
+# Logs, private files and local agent/editor state
+*.log
+*.log.*
+*.lck
+*.tmp
+*.backup
 hs_err_pid*
 replay_pid*
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+.dsh/
+.codex/
+.agents/
+.claude/
+.cursor/
+.idea/
+.vscode/
+*.iml
+.settings/
+.classpath
+.project
+Thumbs.db
+Desktop.ini
+.DS_Store
+*.swp
