@@ -182,6 +182,10 @@ Gradle 会编译源码，并将 `conf/` 和 `img/` 加入运行环境。正常�
 
 `examples/` 提供 `hello-character`、`hello-language` 和 `hello-plugin` 三个示例；`guide/` 提供中英文安装指南。接口、合并规则和受保护路径见 [Mod 与插件规格](documents/mod-and-plugin-api.md)。
 
+## 用户数据兼容性
+
+后续功能开发须保持对已有用户数据的向后兼容，保留好感度、养成进度和用户设置。涉及数据格式、字段或存储位置的变更，须提供兼容读取或可恢复的数据迁移，并通过旧存档升级验证；不得以清空进度替代迁移。具体开发约束见[用户数据兼容约束](documents/architecture.md#用户数据兼容约束)。
+
 ## 项目文档
 
 | 文档 | 内容 |
