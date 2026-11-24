@@ -6,6 +6,10 @@ Shimeji Snow 是基于 **Kilkakon Shimeji-ee 1.0.22** 开发的 Windows 桌面�
 
 项目使用 **Java 21 + Swing + JNA**，通过外部配置定义动作、行为、交互规则和界面主题。Windows 发行包内置精简 Java 运行时，解压后即可启动，无需单独安装 Java；源码构建则需要完整 JDK 21。
 
+## 运行参考
+
+![Shimeji Snow 运行时截图（隐私信息已打码）](documents/assets/shimeji-snow-runtime.png)
+
 ## 功能概述
 
 | 功能 | 说明 |
