@@ -208,6 +208,7 @@ Gradle 会编译源码，并将 `conf/` 和 `img/` 加入运行环境。正常�
 - **Shimeji Snow 开发与维护**：SPRISE。
 - **Shimeji-ee 上游**：Kilkakon、Shimeji-ee Group；Snow 基于其 1.0.22 版本开发。
 - **原始 Shimeji 作者**：Yuki Yamada（Group Finity）。
+- **角色形象风格参考 源自**：漫天相思片片风中开（BiliBili）。
 - 感谢上游贡献者，以及 JNA、FlatLaf、Nashorn、Gson 和其他随源码保留声明的组件作者。
 
 上游项目入口：[Kilkakon Shimeji-ee](https://kilkakon.com/shimeji/)。完整版权归属与第三方声明保留在源码和许可文件中。
