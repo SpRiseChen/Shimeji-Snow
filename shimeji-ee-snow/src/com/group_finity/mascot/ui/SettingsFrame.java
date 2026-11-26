@@ -780,10 +780,27 @@ public final class SettingsFrame extends JDialog
 		rememberActionButton( blacklistRemove );
 		bindComboBoxEditor( blacklistBox, blacklistAdd, blacklistRemove );
 
+		final JPanel lists = gridPanel( );
+		addRow( lists, label( text( "Whitelist", "Whitelist" ) ), withHint(
+				listEditor( whitelistBox, whitelistAdd, whitelistRemove ), windowHint( "WindowWhitelistHint", 280 ) ) );
+		addRow( lists, label( text( "Blacklist", "Blacklist" ) ), withHint(
+				listEditor( blacklistBox, blacklistAdd, blacklistRemove ), windowHint( "WindowBlacklistHint", 280 ) ) );
 		final JPanel panel = gridPanel( );
-		addRow( panel, label( text( "Whitelist", "Whitelist" ) ), interactive( (JComponent)listEditor( whitelistBox, whitelistAdd, whitelistRemove ) ) );
-		addRow( panel, label( text( "Blacklist", "Blacklist" ) ), interactive( (JComponent)listEditor( blacklistBox, blacklistAdd, blacklistRemove ) ) );
+		addRow( panel, subLabel( windowHint( "WindowTitleMatchHint", 380 ) ), null );
+		addRow( panel, subLabel( windowHint( "WindowTitleExampleHint", 380 ) ), null );
+		addRow( panel, lists, null );
+		addRow( panel, subLabel( windowHint( "WindowListSaveHint", 380 ) ), null );
+		addRow( panel, subLabel( windowHint( "WindowListEmptyHint", 380 ) ), null );
+		addRow( panel, subLabel( windowHint( "WindowStateHint", 380 ) ), null );
 		return panel;
+	}
+
+	/** Wrap translated window-list help without widening the settings dialog. */
+	private String windowHint( final String key, final int width )
+	{
+		final String hint = text( key, "" ).replace( "&", "&amp;" )
+				.replace( "<", "&lt;" ).replace( ">", "&gt;" );
+		return "<html><body style='width: " + Brand.scaled( width ) + "px'>" + hint + "</body></html>";
 	}
 
 	// ==== 热键页(阶段 3d) ====
