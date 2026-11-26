@@ -137,10 +137,11 @@ public final class DialogueDirector {
 
     // Caller holds the manager's mascot lock; never constructs UI under that lock.
     static Mascot selectSpeaker(List<Mascot> mascots, List<Rectangle> screens) {
+        List<Mascot> candidates = new ArrayList<>();
         for (Mascot mascot : mascots) {
-            if (visible(mascot) && BubblePlacement.screenFor(mascot.getDisplayBounds(), screens) != null) return mascot;
+            if (visible(mascot) && BubblePlacement.screenFor(mascot.getDisplayBounds(), screens) != null) candidates.add(mascot);
         }
-        return null;
+        return candidates.isEmpty() ? null : candidates.get(ThreadLocalRandom.current().nextInt(candidates.size()));
     }
 
     private Rectangle speakerBounds() {
