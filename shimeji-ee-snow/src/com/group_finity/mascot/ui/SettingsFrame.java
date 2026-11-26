@@ -756,7 +756,7 @@ public final class SettingsFrame extends JDialog
 				if( "Sounds".equals( key ) )
 					Sounds.setMuted( !box.isSelected( ) );
 			} );
-			addRow( panel, interactive( box ), null );
+			addRow( panel, withHint( box, text( toggle[ 1 ] + "Hint", "" ) ), null );
 		}
 		return panel;
 	}
