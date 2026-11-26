@@ -16,6 +16,8 @@ import com.group_finity.mascot.action.Animate;
 import com.group_finity.mascot.action.Move;
 import com.group_finity.mascot.action.Select;
 import com.group_finity.mascot.action.Sequence;
+import com.group_finity.mascot.action.FallWithIE;
+import com.group_finity.mascot.action.WindowThrowSequence;
 import com.group_finity.mascot.action.Stay;
 import com.group_finity.mascot.animation.Animation;
 import com.group_finity.mascot.exception.ActionInstantiationException;
@@ -130,6 +132,10 @@ public class ActionBuilder implements IActionBuilder {
 			} else if( this.type.equals( schema.getString( "Animate" ) ) ) {
                             return new Animate( schema, animations, variables);
 			} else if( this.type.equals( schema.getString( "Sequence" ) ) ) {
+                            // Existing XML/mod sequences that carry a window share its identity.
+                            if (actions.stream().anyMatch(action -> action instanceof FallWithIE)) {
+                                return new WindowThrowSequence(schema, variables, actions.toArray(new Action[0]));
+                            }
                             return new Sequence( schema, variables, actions.toArray(new Action[0]));
 			} else if( this.type.equals( schema.getString( "Select" ) ) ) {
                             return new Select( schema, variables, actions.toArray(new Action[0]));

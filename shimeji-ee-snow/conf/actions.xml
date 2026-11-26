@@ -619,7 +619,7 @@
 		</Action>
 
 		<Action Name="ThrowIEFromLeft" Type="Sequence" Loop="false">
-			<ActionReference Name="Jumping" TargetX="${mascot.environment.activeIE.left}" TargetY="${mascot.environment.activeIE.bottom+64}" />
+			<ActionReference Name="Jumping" TargetX="#{action.windowTarget.left}" TargetY="#{action.windowTarget.bottom+64}" />
 			<ActionReference Name="FallWithIe" />
 			<ActionReference Name="WalkWithIe" TargetX="#{mascot.environment.workArea.right-400}" />
 			<ActionReference Name="ThrowIe" />
@@ -628,7 +628,7 @@
 			<ActionReference Name="Stand" Duration="${50+Math.random()*50}" />
 		</Action>
 		<Action Name="ThrowIEFromRight" Type="Sequence" Loop="false">
-			<ActionReference Name="Jumping" TargetX="${mascot.environment.activeIE.right}" TargetY="${mascot.environment.activeIE.bottom+64}" />
+			<ActionReference Name="Jumping" TargetX="#{action.windowTarget.right}" TargetY="#{action.windowTarget.bottom+64}" />
 			<ActionReference Name="FallWithIe" />
 			<ActionReference Name="WalkWithIe" TargetX="#{mascot.environment.workArea.left+400}" />
 			<ActionReference Name="ThrowIe" />
@@ -637,7 +637,7 @@
 			<ActionReference Name="Stand" Duration="${50+Math.random()*50}" />
 		</Action>
 		<Action Name="WalkAndThrowIEFromRight" Type="Sequence" Loop="false">
-			<ActionReference Name="Jumping" TargetX="${mascot.environment.activeIE.left}" TargetY="${mascot.environment.activeIE.bottom+64}" />
+			<ActionReference Name="Jumping" TargetX="#{action.windowTarget.left}" TargetY="#{action.windowTarget.bottom+64}" />
 			<ActionReference Name="FallWithIe" />
 			<ActionReference Name="RunWithIe" TargetX="#{mascot.environment.workArea.right-400}" />
 			<ActionReference Name="ThrowIe" />
@@ -646,7 +646,7 @@
 			<ActionReference Name="Stand" Duration="${50+Math.random()*50}" />
 		</Action>
 		<Action Name="WalkAndThrowIEFromLeft" Type="Sequence" Loop="false">
-			<ActionReference Name="Jumping" TargetX="${mascot.environment.activeIE.right}" TargetY="${mascot.environment.activeIE.bottom+64}" />
+			<ActionReference Name="Jumping" TargetX="#{action.windowTarget.right}" TargetY="#{action.windowTarget.bottom+64}" />
 			<ActionReference Name="FallWithIe" />
 			<ActionReference Name="RunWithIe" TargetX="#{mascot.environment.workArea.left+400}" />
 			<ActionReference Name="ThrowIe" />

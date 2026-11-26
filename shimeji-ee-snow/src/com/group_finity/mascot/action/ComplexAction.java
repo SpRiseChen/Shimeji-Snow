@@ -97,4 +97,12 @@ public abstract class ComplexAction extends ActionBase {
 		return this.getActions()[this.getCurrentAction()];
 	}
 
+    @Override
+    void setWindowTarget(com.group_finity.mascot.environment.Area target) {
+        super.setWindowTarget(target);
+        for (Action child : actions) {
+            if (child instanceof ActionBase action) action.setWindowTarget(target);
+        }
+    }
+
 }

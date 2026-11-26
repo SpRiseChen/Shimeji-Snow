@@ -41,7 +41,7 @@ public class FallWithIE extends Fall
     public void init( final Mascot mascot ) throws VariableException
     {
         super.init( mascot );
-        ie = getEnvironment( ).getActiveIE( );
+        ie = getWindowTarget();
     }
 
     @Override
@@ -57,7 +57,7 @@ public class FallWithIE extends Fall
     protected void tick( ) throws LostGroundException, VariableException
     {
         if( ie == null )
-            ie = getEnvironment( ).getActiveIE( );
+            ie = getWindowTarget();
 
         final Area activeIE = ie;
         if( !activeIE.isVisible( ) )

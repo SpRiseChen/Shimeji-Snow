@@ -1048,7 +1048,7 @@
 
         <Action Loop="false" Name="ThrowIEFromLeft" Type="Sequence">
 
-            <ActionReference Name="Jumping" TargetX="${mascot.environment.activeIE.left}" TargetY="${mascot.environment.activeIE.bottom+64}"/>
+            <ActionReference Name="Jumping" TargetX="#{action.windowTarget.left}" TargetY="#{action.windowTarget.bottom+128}"/>
 
             <ActionReference Name="FallWithIe"/>
 
@@ -1066,7 +1066,7 @@
 
         <Action Loop="false" Name="ThrowIEFromRight" Type="Sequence">
 
-            <ActionReference Name="Jumping" TargetX="${mascot.environment.activeIE.right}" TargetY="${mascot.environment.activeIE.bottom+64}"/>
+            <ActionReference Name="Jumping" TargetX="#{action.windowTarget.right}" TargetY="#{action.windowTarget.bottom+128}"/>
 
             <ActionReference Name="FallWithIe"/>
 
@@ -1084,7 +1084,7 @@
 
         <Action Loop="false" Name="WalkAndThrowIEFromRight" Type="Sequence">
 
-            <ActionReference Name="Jumping" TargetX="${mascot.environment.activeIE.left}" TargetY="${mascot.environment.activeIE.bottom+64}"/>
+            <ActionReference Name="Jumping" TargetX="#{action.windowTarget.left}" TargetY="#{action.windowTarget.bottom+128}"/>
 
             <ActionReference Name="FallWithIe"/>
 
@@ -1102,7 +1102,7 @@
 
         <Action Loop="false" Name="WalkAndThrowIEFromLeft" Type="Sequence">
 
-            <ActionReference Name="Jumping" TargetX="${mascot.environment.activeIE.right}" TargetY="${mascot.environment.activeIE.bottom+64}"/>
+            <ActionReference Name="Jumping" TargetX="#{action.windowTarget.right}" TargetY="#{action.windowTarget.bottom+128}"/>
 
             <ActionReference Name="FallWithIe"/>
 

@@ -41,7 +41,7 @@ public class WalkWithIE extends Move
     public void init( final Mascot mascot ) throws VariableException
     {
         super.init( mascot );
-        ie = getEnvironment( ).getActiveIE( );
+        ie = getWindowTarget();
     }
 
     @Override
@@ -57,7 +57,7 @@ public class WalkWithIE extends Move
     protected void tick( ) throws LostGroundException, VariableException
     {
         if( ie == null )
-            ie = getEnvironment( ).getActiveIE( );
+            ie = getWindowTarget();
 
         final Area activeIE = ie;
         if( !activeIE.isVisible( ) )

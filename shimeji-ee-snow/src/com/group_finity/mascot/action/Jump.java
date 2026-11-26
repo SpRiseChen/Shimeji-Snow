@@ -60,7 +60,13 @@ public class Jump extends ActionBase
         final int targetX = getTargetX( );
         final int targetY = getTargetY( );
 
-        getMascot( ).setLookRight( getMascot( ).getAnchor( ).x < targetX );
+        // A carried window cannot follow a jump into another coordinate system.
+        if (hasWindowTarget() && (!getWindowTarget().isVisible()
+                || !getEnvironment().getWorkArea().contains(targetX, targetY))) {
+            throw new LostGroundException();
+        }
+        final Point before = new Point(getMascot().getAnchor());
+        if (before.x != targetX) getMascot().setLookRight(before.x < targetX);
 
         final double distanceX = targetX - getMascot( ).getAnchor( ).x;
         final double distanceY = targetY - getMascot( ).getAnchor( ).y - Math.abs( distanceX ) / 2;
@@ -85,7 +91,11 @@ public class Jump extends ActionBase
 
         if( distance <= velocity )
         {
-            getMascot( ).setAnchor( new Point( targetX, targetY ) );
+            getMascot( ).moveAnchor( new Point( targetX, targetY ) );
+        }
+        if (!screenChanged() && distance != 0 && before.equals(getMascot().getAnchor())) {
+            // A floor/wall can prevent reaching a target; never wait there forever.
+            throw new LostGroundException();
         }
     }
 

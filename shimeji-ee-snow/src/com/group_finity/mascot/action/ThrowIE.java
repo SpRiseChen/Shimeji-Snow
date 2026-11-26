@@ -44,7 +44,7 @@ public class ThrowIE extends Animate
     public void init( final Mascot mascot ) throws VariableException
     {
         super.init( mascot );
-        ie = getEnvironment( ).getActiveIE( );
+        ie = getWindowTarget();
     }
 
     @Override
@@ -54,7 +54,7 @@ public class ThrowIE extends Animate
             return false;
 
         if( ie == null )
-            ie = getEnvironment( ).getActiveIE( );
+            ie = getWindowTarget();
 
         final boolean ieVisible = ie.isVisible( );
 
@@ -67,7 +67,7 @@ public class ThrowIE extends Animate
         super.tick( );
 
         if( ie == null )
-            ie = getEnvironment( ).getActiveIE( );
+            ie = getWindowTarget();
 
         final Area activeIE = ie;
 

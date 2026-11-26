@@ -7,6 +7,7 @@ import java.util.ResourceBundle;
 import com.group_finity.mascot.Mascot;
 import com.group_finity.mascot.animation.Animation;
 import com.group_finity.mascot.environment.MascotEnvironment;
+import com.group_finity.mascot.environment.Area;
 import com.group_finity.mascot.exception.LostGroundException;
 import com.group_finity.mascot.exception.VariableException;
 import com.group_finity.mascot.hotspot.Hotspot;
@@ -41,6 +42,21 @@ public abstract class ActionBase implements Action
 
     private int startTime;
     private int screenRevision;
+
+    private Area windowTarget;
+
+    /** A throw sequence passes one window identity to all of its child actions. */
+    void setWindowTarget(Area target) {
+        windowTarget = target;
+    }
+
+    public Area getWindowTarget() {
+        return windowTarget != null ? windowTarget : getEnvironment().getActiveIE();
+    }
+
+    protected boolean hasWindowTarget() {
+        return windowTarget != null;
+    }
 
     private List<Animation> animations;
 
