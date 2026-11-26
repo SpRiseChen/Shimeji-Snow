@@ -1,11 +1,12 @@
 package com.group_finity.mascot.win;
 
-import com.group_finity.mascot.Main;
 import java.awt.Graphics;
 import java.awt.image.BufferedImage;
 import java.awt.image.ImageObserver;
 import java.awt.image.ImageProducer;
 import java.lang.ref.Cleaner;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 import com.group_finity.mascot.image.NativeImage;
 import com.group_finity.mascot.win.jna.BITMAP;
@@ -46,6 +47,7 @@ class WindowsNativeImage implements NativeImage {
 		final Pointer hBitmap = Gdi32.INSTANCE.CreateDIBSection(
 				Pointer.NULL, bmi, Gdi32.DIB_RGB_COLORS, Pointer.NULL, Pointer.NULL, 0 );
 
+		if (hBitmap == null) throw new IllegalStateException("CreateDIBSection failed: " + Native.getLastError());
 		return hBitmap;
 	}
 
@@ -59,7 +61,8 @@ class WindowsNativeImage implements NativeImage {
 	private static void flushNative(final Pointer nativeHandle, final int[] rgb, final int sourceWidth, final int sourceHeight) {
 
 		final BITMAP bmp = new BITMAP();
-                Gdi32.INSTANCE.GetObjectW( nativeHandle, Main.getInstance( ).getPlatform( ).getBitmapSize( ) + Native.POINTER_SIZE, bmp );
+		if (Gdi32.INSTANCE.GetObjectW(nativeHandle, bmp.size(), bmp) == 0)
+			throw new IllegalStateException("GetObjectW failed: " + Native.getLastError());
 
 		// Copy at the pixel level. These dimensions are the DIB's, i.e. already scaled by the device scale.
 		int width = bmp.bmWidth;
@@ -102,29 +105,24 @@ class WindowsNativeImage implements NativeImage {
 	 */
 	private final BufferedImage managedImage;
 
-	/**
-	 * Windows Bittomappuhandoru.
-	 */
-	private final Pointer nativeHandle;
+	/** Bounded per-size DIB cache, shared by pets displaying this frame on different monitors. */
+	private final NativeBitmaps bitmaps = new NativeBitmaps();
+
+	private static final class NativeBitmaps implements Runnable {
+		private final Map<Long, Pointer> handles = new LinkedHashMap<>(4, 0.75f, true);
+
+		@Override
+		public synchronized void run() {
+			handles.values().forEach(WindowsNativeImage::freeNative);
+			handles.clear();
+		}
+	}
 
 	public WindowsNativeImage(final BufferedImage image) {
 
 	    this.managedImage = image;
-            // DIB 按**设备分辨率**创建(图像逻辑尺寸 × 显示器缩放,见 DpiScale.bitmapScale):
-            // ULW 的目标尺寸是物理像素,位图不同尺寸就得靠它拉伸,而源小于目标时它根本不画东西。
-            // 取整向上,保证源永不小于目标(舍入差 1 像素也会让整只宠物消失)。
-            final double deviceScale = DpiScale.bitmapScale( );
-            this.nativeHandle = createNative(
-                    (int)Math.ceil( image.getWidth( ) * deviceScale ),
-                    (int)Math.ceil( image.getHeight( ) * deviceScale ) );
-
-            int[] rbgValues = image.getRGB(0, 0, image.getWidth(), image.getHeight(), null, 0, image.getWidth());
-
-            flushNative(this.getNativeHandle(), rbgValues, image.getWidth(), image.getHeight());
-
-            // 注意捕获局部变量而非实例字段:cleanable 不能引用本对象,否则永不回收
-            final Pointer handle = this.nativeHandle;
-            CLEANER.register( this, ( ) -> freeNative( handle ) );
+            // Cleaner owns only the cache, never the image instance itself.
+            CLEANER.register(this, bitmaps);
 	}
 
     /**
@@ -145,9 +143,30 @@ class WindowsNativeImage implements NativeImage {
         return managedImage.createGraphics( );
     }
 
-    public Pointer getHandle( )
+    Pointer getHandle(final int width, final int height)
     {
-        return nativeHandle;
+        if (width <= 0 || height <= 0) throw new IllegalArgumentException("Invalid bitmap size");
+        final long key = ((long)width << 32) | (height & 0xffffffffL);
+        synchronized (bitmaps) {
+            final Pointer cached = bitmaps.handles.get(key);
+            if (cached != null) return cached;
+            final Pointer handle = createNative(width, height);
+            try {
+                final int[] rgb = managedImage.getRGB(0, 0, getWidth(), getHeight(), null, 0, getWidth());
+                // ULW copies pixels; the source must already have the exact destination size.
+                flushNative(handle, rgb, getWidth(), getHeight());
+            } catch (RuntimeException | Error failure) {
+                freeNative(handle);
+                throw failure;
+            }
+            if (bitmaps.handles.size() >= 4) {
+                final var oldest = bitmaps.handles.entrySet().iterator();
+                freeNative(oldest.next().getValue());
+                oldest.remove();
+            }
+            bitmaps.handles.put(key, handle);
+            return handle;
+        }
     }
 
     public int getHeight( )
@@ -185,8 +204,4 @@ class WindowsNativeImage implements NativeImage {
         return managedImage;
     }
 
-    private Pointer getNativeHandle( )
-    {
-        return nativeHandle;
-    }
 }

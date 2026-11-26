@@ -2,9 +2,8 @@ package com.group_finity.mascot.win;
 
 import java.awt.Graphics;
 import java.awt.Component;
-import java.awt.GraphicsConfiguration;
-import java.awt.Rectangle;
 import javax.swing.JWindow;
+import java.util.logging.Logger;
 
 import com.group_finity.mascot.image.NativeImage;
 import com.group_finity.mascot.image.TranslucentWindow;
@@ -12,6 +11,7 @@ import com.group_finity.mascot.win.jna.BLENDFUNCTION;
 import com.group_finity.mascot.win.jna.Gdi32;
 import com.group_finity.mascot.win.jna.POINT;
 import com.group_finity.mascot.win.jna.SIZE;
+import com.group_finity.mascot.win.jna.RECT;
 import com.group_finity.mascot.win.jna.User32;
 import com.sun.jna.Native;
 import com.sun.jna.Pointer;
@@ -34,58 +34,52 @@ class WindowsTranslucentWindow extends JWindow implements TranslucentWindow {
 		return this;
 	}
 
-	/**
-	 * Draw a picture with a value of alpha.
-	 * @param imageHandle bitmap handle.
-	 * @param alpha concentrations shown. 0 = not at all, 255 = full display.
-	 */
-	private void paint(final Pointer imageHandle, final int alpha) {
+	private static final Logger LOG = Logger.getLogger(WindowsTranslucentWindow.class.getName());
+	private int lastPaintError;
 
+	/** AWT owns movement/DPI changes. Copy an exactly sized DIB without moving the HWND again. */
+	private void paint(final WindowsNativeImage image, final int alpha) {
 		final Pointer hWnd = Native.getComponentPointer(this);
+		if (User32.INSTANCE.IsWindow(hWnd) == 0) return;
+		final RECT bounds = new RECT();
+		if (User32.INSTANCE.GetWindowRect(hWnd, bounds) == 0 || bounds.Width() <= 0 || bounds.Height() <= 0) return;
 
-		if ( User32.INSTANCE.IsWindow(hWnd)!=0 ) {
+		final int exStyle = User32.INSTANCE.GetWindowLongW(hWnd, User32.GWL_EXSTYLE);
+		if ((exStyle & User32.WS_EX_LAYERED) == 0)
+			User32.INSTANCE.SetWindowLongW(hWnd, User32.GWL_EXSTYLE, exStyle | User32.WS_EX_LAYERED);
 
-			final int exStyle = User32.INSTANCE.GetWindowLongW(hWnd, User32.GWL_EXSTYLE);
-			if ( (exStyle&User32.WS_EX_LAYERED)==0 ) {
-				User32.INSTANCE.SetWindowLongW(hWnd, User32.GWL_EXSTYLE, exStyle | User32.WS_EX_LAYERED);
-			}
-
-			// Create a DC source of the image
-			final Pointer clientDC = User32.INSTANCE.GetDC(hWnd);
-			final Pointer memDC = Gdi32.INSTANCE.CreateCompatibleDC(clientDC);
-			final Pointer oldBmp = Gdi32.INSTANCE.SelectObject(memDC, imageHandle );
-
+		final Pointer imageHandle = image.getHandle(bounds.Width(), bounds.Height());
+		final Pointer clientDC = User32.INSTANCE.GetDC(hWnd);
+		final Pointer memDC;
+		try {
+			memDC = Gdi32.INSTANCE.CreateCompatibleDC(clientDC);
+		} finally {
 			User32.INSTANCE.ReleaseDC(hWnd, clientDC);
-
-			// Destination Area — HiDPI:AWT 逻辑 bounds 按所在显示器缩放换算成物理像素,
-			// UpdateLayeredWindow 的位置/尺寸均为物理;位图本体保持图像像素尺寸,由 ULW 拉伸
-			final Rectangle bounds = getBounds();
-			final GraphicsConfiguration gc = getGraphicsConfiguration();
-			final double scaleX = DpiScale.of( gc );
-			final double scaleY = gc != null ? gc.getDefaultTransform().getScaleY() : 1.0;
-
-			// Forward
+		}
+		if (memDC == null) return;
+		final Pointer oldBmp = Gdi32.INSTANCE.SelectObject(memDC, imageHandle);
+		try {
 			final BLENDFUNCTION bf = new BLENDFUNCTION();
 			bf.BlendOp = BLENDFUNCTION.AC_SRC_OVER;
-			bf.BlendFlags = 0;
-			bf.SourceConstantAlpha = (byte)alpha; // Level set
+			bf.SourceConstantAlpha = (byte)alpha;
 			bf.AlphaFormat = BLENDFUNCTION.AC_SRC_ALPHA;
-
-			final POINT lt = new POINT();
-			lt.x = (int)Math.round( bounds.x * scaleX );
-			lt.y = (int)Math.round( bounds.y * scaleY );
 			final SIZE size = new SIZE();
-			size.cx = (int)Math.round( bounds.width * scaleX );
-			size.cy = (int)Math.round( bounds.height * scaleY );
-			final POINT zero = new POINT();
-			User32.INSTANCE.UpdateLayeredWindow(
-					hWnd, Pointer.NULL,
-					lt, size,
-					memDC, zero, 0, bf, User32.ULW_ALPHA );
-
-			// Replace the bitmap you
+			size.cx = bounds.Width();
+			size.cy = bounds.Height();
+			final int result = User32.INSTANCE.UpdateLayeredWindow(
+					hWnd, Pointer.NULL, null, size, memDC, new POINT(), 0, bf, User32.ULW_ALPHA);
+			if (result == 0) {
+				final int error = Native.getLastError();
+				if (lastPaintError != error || error == 0)
+					LOG.warning("UpdateLayeredWindow failed: error=" + error + ", size=" + size.cx + "x" + size.cy);
+				lastPaintError = error;
+			} else {
+				lastPaintError = 0;
+			}
+		} finally {
 			Gdi32.INSTANCE.SelectObject(memDC, oldBmp);
 			Gdi32.INSTANCE.DeleteDC(memDC);
+			java.lang.ref.Reference.reachabilityFence(image);
 		}
 	}
 
@@ -108,7 +102,7 @@ class WindowsTranslucentWindow extends JWindow implements TranslucentWindow {
 	public void paint(final Graphics g) {
 		if (getImage() != null) {
 			// JNI with drawing images using the a value.
-			paint(getImage().getHandle(), getAlpha());
+			paint(getImage(), getAlpha());
 		}
 	}
 

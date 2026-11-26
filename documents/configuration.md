@@ -38,6 +38,8 @@
 
 `Environment=generic` 在 Windows 使用 Windows 平台；`virtual` 使用可调整大小的窗口内容区。`Multiscreen` / `ActivityScreen` 控制活动显示器，`InteractiveWindows` 是标题子串白名单，黑名单优先。`Render.Fps=60` 控制绘制时钟，逻辑时钟固定 25Hz，`Render.TeleportDistance=256` 限制位置插值跳跃。
 
+开启 `Multiscreen` 且 `ActivityScreen=mouse` 时，角色可在实际相邻的显示器间移动。相邻方向的整条边作为通道，不可攀爬、悬挂或停靠；跨屏位置沿边长按比例映射，例如较高屏幕的中点进入较低屏幕的中点。沿边方向的速度同时换算，工作区与落地判定跟随角色，跨屏绘制不在两套坐标之间直接插值。窗口本身的交互边缘不受影响。关闭跨屏移动或指定活动屏幕时，角色的运动限制在该工作区；拖拽仍跟随鼠标，松手后使用对应工作区的边界。
+
 默认热键为呼唤 `Ctrl+Alt+S`、集合 `Ctrl+Alt+G`、暂停 `Ctrl+Alt+P`、设置 `Ctrl+Alt+O`、喂食 `Ctrl+Alt+F`；截图项 `Ctrl+Alt+C` 默认关闭。更新检查默认关闭且 URL 为空。
 
 ## 好感度

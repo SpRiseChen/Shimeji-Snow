@@ -40,6 +40,7 @@ public abstract class ActionBase implements Action
     private Mascot mascot;
 
     private int startTime;
+    private int screenRevision;
 
     private List<Animation> animations;
 
@@ -71,6 +72,8 @@ public abstract class ActionBase implements Action
     public void init(final Mascot mascot) throws VariableException
     {
         setMascot( mascot );
+        getEnvironment().getWorkArea();
+        screenRevision = getEnvironment().getScreenRevision();
         setTime( 0 );
 
         getVariables( ).put( "mascot", mascot );
@@ -117,6 +120,10 @@ public abstract class ActionBase implements Action
     }
 
     protected abstract void tick( ) throws LostGroundException, VariableException;
+
+    protected boolean screenChanged() {
+        return screenRevision != getEnvironment().getScreenRevision();
+    }
 
     @Override
     public boolean hasNext( ) throws VariableException

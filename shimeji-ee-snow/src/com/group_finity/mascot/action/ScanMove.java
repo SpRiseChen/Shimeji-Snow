@@ -104,6 +104,7 @@ public class ScanMove extends BorderedAction
         }
         
         getAnimation( ).next( getMascot( ), getTime( ) );
+        if (screenChanged()) return;
 
         if( ( getMascot( ).isLookRight( ) && ( getMascot( ).getAnchor( ).x >= targetX ) ) ||
             ( !getMascot( ).isLookRight( ) && ( getMascot( ).getAnchor( ).x <= targetX ) ) )

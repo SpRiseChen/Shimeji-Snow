@@ -3,7 +3,7 @@ plugins {
     application
 }
 
-version = "1.0.0"
+version = "1.0.1"
 group = "com.group_finity"
 
 // 国内镜像优先,海外回退 Maven Central

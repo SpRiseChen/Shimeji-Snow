@@ -2,6 +2,7 @@ package com.group_finity.mascot.win;
 
 import com.group_finity.mascot.Main;
 import java.awt.Point;
+import java.awt.GraphicsConfiguration;
 import java.awt.Rectangle;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -52,6 +53,7 @@ class WindowsEnvironment extends Environment
     private enum IEResult { INVALID, NOT_IE, IE_OUT_OF_BOUNDS, IE };
     
     private static final Logger log = Logger.getLogger( Environment.class.getName( ) );
+    private GraphicsConfiguration cursorDevice;
 
     // Static like the window pool: survives an environment refresh until dispose returns them.
     private static final MovedWindowRecovery movedWindows = new MovedWindowRecovery( new MovedWindowRecovery.Desktop( )
@@ -377,7 +379,19 @@ class WindowsEnvironment extends Environment
     @Override
     public void tick()
     {
+        final Point previousCursor = new Point(cursor.getX(), cursor.getY());
+        final int previousDx = cursor.getDx(), previousDy = cursor.getDy();
         super.tick();
+        final java.awt.PointerInfo pointer = java.awt.MouseInfo.getPointerInfo();
+        final GraphicsConfiguration nextDevice = pointer != null && pointer.getDevice() != null
+                ? pointer.getDevice().getDefaultConfiguration() : null;
+        if (cursorDevice != null && nextDevice != null && cursorDevice.getDevice() != nextDevice.getDevice()) {
+            final Point velocity = DpiScale.cursorVelocity(previousCursor, new Point(cursor.getX(), cursor.getY()),
+                    new Point(previousDx, previousDy), cursorDevice, nextDevice);
+            cursor.setDx(velocity.x);
+            cursor.setDy(velocity.y);
+        }
+        cursorDevice = nextDevice;
         workArea.set( getWorkAreaRect() );
 
         refreshIEPool( );
@@ -509,75 +523,34 @@ class WindowsEnvironment extends Environment
     
     private static Rectangle getWorkAreaRect( )
     {
-        // 按鼠标所在显示器取工作区(替代旧的 SPI_GETWORKAREA 仅主屏方案)。
-        // Win32 侧全部是物理像素:逻辑鼠标位 → 换算物理 → MonitorFromPoint → GetMonitorInfoW → 换算回逻辑。
-        // 阶段 3c:缩放直接取自 PointerInfo 携带的鼠标所在设备(混合 DPI 精确),取不到再按逻辑点命中猜测
-        final java.awt.PointerInfo pointerInfo = java.awt.MouseInfo.getPointerInfo( );
-        final Point cursor = pointerInfo != null ? pointerInfo.getLocation( ) : new Point( );
-        final double scale = pointerInfo != null && pointerInfo.getDevice( ) != null
-                ? DpiScale.of( pointerInfo.getDevice( ).getDefaultConfiguration( ) )
-                : DpiScale.atLogicalPoint( cursor );
-
-        final POINT.ByValue pt = new POINT.ByValue( );
-        pt.x = (int)Math.round( cursor.x * scale );
-        pt.y = (int)Math.round( cursor.y * scale );
-        final Pointer hMonitor = User32.INSTANCE.MonitorFromPoint( pt, User32.MONITOR_DEFAULTTONEAREST );
-        if( hMonitor == null || hMonitor == Pointer.NULL )
-        {
-            final RECT rect = new RECT( );
-            User32.INSTANCE.SystemParametersInfoW( User32.SPI_GETWORKAREA, 0, rect, 0 );
-            return DpiScale.toLogical( new Rectangle( rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top ), scale );
-        }
-
-        final MONITORINFO info = new MONITORINFO( );
-        info.cbSize = new NativeLong( info.size( ) );
-        if( User32.INSTANCE.GetMonitorInfoW( hMonitor, info ) == 0 )
-        {
-            final RECT rect = new RECT( );
-            User32.INSTANCE.SystemParametersInfoW( User32.SPI_GETWORKAREA, 0, rect, 0 );
-            return DpiScale.toLogical( new Rectangle( rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top ), scale );
-        }
-
-        final RECT work = info.rcWork;
-        return DpiScale.toLogical( new Rectangle( work.left, work.top, work.right - work.left, work.bottom - work.top ), scale );
+        final java.awt.PointerInfo pointerInfo = java.awt.MouseInfo.getPointerInfo();
+        final GraphicsConfiguration gc = pointerInfo != null && pointerInfo.getDevice() != null
+                ? pointerInfo.getDevice().getDefaultConfiguration()
+                : DpiScale.primary();
+        return monitorWorkAreaAt(gc);
     }
 
-    /**
-     * 阶段 3c:第 index 块显示器的工作区(去任务栏 rcWork),供 ActivityScreen 锁定活动屏幕。
-     * 混合 DPI 下缩放直接取自目标显示器自身的 GraphicsConfiguration,不做跨屏命中猜测。
-     */
     @Override
     public Rectangle getScreenWorkArea( final int index )
     {
-        final java.awt.GraphicsDevice[ ] devices = java.awt.GraphicsEnvironment.getLocalGraphicsEnvironment( ).getScreenDevices( );
-        if( devices.length == 0 )
-            return super.getScreenWorkArea( index );
-
-        final int i = Math.max( 0, Math.min( devices.length - 1, index ) );
-        final java.awt.GraphicsConfiguration gc = devices[ i ].getDefaultConfiguration( );
-        final Rectangle logical = gc.getBounds( );
-        return monitorWorkAreaAt( logical, DpiScale.of( gc ) );
+        final java.awt.GraphicsDevice[] devices = java.awt.GraphicsEnvironment.getLocalGraphicsEnvironment().getScreenDevices();
+        if (devices.length == 0) return super.getScreenWorkArea(index);
+        return monitorWorkAreaAt(devices[Math.max(0, Math.min(devices.length - 1, index))].getDefaultConfiguration());
     }
 
-    /** 逻辑矩形中心所在显示器(物理化后 MonitorFromPoint 精确定位)的 rcWork;失败回退原逻辑矩形。 */
-    private static Rectangle monitorWorkAreaAt( final Rectangle logical, final double scale )
-    {
-        final int cx = logical.x + logical.width / 2;
-        final int cy = logical.y + logical.height / 2;
+    @Override
+    public int getAdjacentScreen(int source, com.group_finity.mascot.environment.ScreenTraversal.Edge edge, double fraction) {
+        return DpiScale.adjacentScreen(source, edge, fraction);
+    }
 
-        final POINT.ByValue pt = new POINT.ByValue( );
-        pt.x = (int)Math.round( cx * scale );
-        pt.y = (int)Math.round( cy * scale );
-        final Pointer hMonitor = User32.INSTANCE.MonitorFromPoint( pt, User32.MONITOR_DEFAULTTONEAREST );
-        if( hMonitor != null && hMonitor != Pointer.NULL )
-        {
-            final MONITORINFO info = new MONITORINFO( );
-            info.cbSize = new NativeLong( info.size( ) );
-            if( User32.INSTANCE.GetMonitorInfoW( hMonitor, info ) != 0 )
-            {
-                final RECT work = info.rcWork;
-                return DpiScale.toLogical( new Rectangle( work.left, work.top, work.right - work.left, work.bottom - work.top ), scale );
-            }
+    /** Locate the known device using its physical centre; keep its origin when converting rcWork. */
+    private static Rectangle monitorWorkAreaAt(final GraphicsConfiguration gc)
+    {
+        final Rectangle logical = gc.getBounds();
+        final MONITORINFO info = DpiScale.monitorInfo(gc);
+        if (info != null) {
+            final RECT work = info.rcWork;
+            return DpiScale.toLogical(new Rectangle(work.left, work.top, work.Width(), work.Height()), gc);
         }
         return logical;
     }

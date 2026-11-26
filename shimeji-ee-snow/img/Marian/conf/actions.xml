@@ -1130,7 +1130,7 @@
 
             </Action>
 
-            <Action Condition="${mascot.environment.workArea.leftBorder.isOn(mascot.anchor) || mascot.environment.activeIE.rightBorder.isOn(mascot.anchor)}" Type="Sequence">
+            <Action Condition="${mascot.environment.workAreaLeftWall.isOn(mascot.anchor) || mascot.environment.activeIE.rightBorder.isOn(mascot.anchor)}" Type="Sequence">
 
                 <ActionReference Name="Offset" X="2"/>
 
@@ -1140,7 +1140,7 @@
 
             </Action>
 
-            <Action Condition="${mascot.environment.workArea.rightBorder.isOn(mascot.anchor) || mascot.environment.activeIE.leftBorder.isOn(mascot.anchor)}" Type="Sequence">
+            <Action Condition="${mascot.environment.workAreaRightWall.isOn(mascot.anchor) || mascot.environment.activeIE.leftBorder.isOn(mascot.anchor)}" Type="Sequence">
 
                 <ActionReference Name="Offset" X="-2"/>
 

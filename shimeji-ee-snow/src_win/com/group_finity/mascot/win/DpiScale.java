@@ -7,108 +7,128 @@ import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.geom.AffineTransform;
 
-/**
- * HiDPI 坐标换算:全程序统一使用 AWT 逻辑坐标,仅在 Win32 调用边界换算成物理像素。
- * 缩放真相来自各显示器的 GraphicsConfiguration.getDefaultTransform()(JDK 9+ 提供每显示器缩放),
- * 不直接用 GetDpiForMonitor——进程的感知模式由 JVM 决定,AWT 的逻辑空间才是应用实际生活的坐标系。
- *
- * 混合 DPI 多显示器(阶段 3c 起):缩放一律取自"已确知的目标设备"自身的
- * GraphicsConfiguration——鼠标侧经 PointerInfo.getDevice(),指定屏侧直接持有设备序;
- * atLogicalPoint/atPhysicalRect 的命中猜测仅作取不到设备时的回退。
- */
+import com.group_finity.mascot.win.jna.MONITORINFO;
+import com.group_finity.mascot.win.jna.RECT;
+import com.group_finity.mascot.win.jna.User32;
+import com.sun.jna.NativeLong;
+import com.sun.jna.Pointer;
+
+/** AWT logical coordinates inside the application; physical pixels only at Win32 boundaries. */
 final class DpiScale {
+    private DpiScale() {
+    }
 
-	private DpiScale( ) {
-	}
+    static GraphicsConfiguration primary() {
+        return GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice().getDefaultConfiguration();
+    }
 
-	static double of( final GraphicsConfiguration gc ) {
-		if ( gc == null ) {
-			return 1.0;
-		}
-		final AffineTransform tx = gc.getDefaultTransform( );
-		return tx == null ? 1.0 : tx.getScaleX( );
-	}
+    static GraphicsConfiguration atLogicalPoint(final Point logical) {
+        for (final GraphicsDevice device : GraphicsEnvironment.getLocalGraphicsEnvironment().getScreenDevices()) {
+            final GraphicsConfiguration gc = device.getDefaultConfiguration();
+            if (gc.getBounds().contains(logical)) return gc;
+        }
+        return primary();
+    }
 
-	static double primary( ) {
-		final GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment( );
-		return of( ge.getDefaultScreenDevice( ).getDefaultConfiguration( ) );
-	}
+    /** Match native monitor origins, rather than dividing absolute desktop coordinates to guess a screen. */
+    static GraphicsConfiguration atPhysicalRect(final Rectangle physical) {
+        final RECT rect = new RECT();
+        rect.left = physical.x;
+        rect.top = physical.y;
+        rect.right = physical.x + physical.width;
+        rect.bottom = physical.y + physical.height;
+        final Pointer monitor = User32.INSTANCE.MonitorFromRect(rect, User32.MONITOR_DEFAULTTONEAREST);
+        final MONITORINFO info = new MONITORINFO();
+        info.cbSize = new NativeLong(info.size());
+        if (monitor != null && User32.INSTANCE.GetMonitorInfoW(monitor, info) != 0) {
+            for (final GraphicsDevice device : GraphicsEnvironment.getLocalGraphicsEnvironment().getScreenDevices()) {
+                final GraphicsConfiguration gc = device.getDefaultConfiguration();
+                final Rectangle bounds = gc.getBounds();
+                if (bounds.x == info.rcMonitor.left && bounds.y == info.rcMonitor.top) return gc;
+            }
+        }
+        return primary();
+    }
 
-	/**
-	 * 位图设备缩放:全部显示器缩放的最大值(至少 1.0)。
-	 *
-	 * 原生位图( {@link WindowsNativeImage} 的 DIB )按它创建,于是任何显示器上都是"源 ≥ 目标尺寸"。
-	 * 这不是画质优化而是硬要求:UpdateLayeredWindow 的目标尺寸是物理像素,
-	 * 而**源位图小于目标时它不会拉伸,而是整窗一个像素都不画**(实测 150% 下角色完全不可见,
-	 * 128×128 位图 + 192×192 目标);取最大值还能让宠物走到低缩放屏上时走"缩小"这条能用的路。
-	 */
-	static double bitmapScale( ) {
-		double max = 1.0;
-		for( final GraphicsDevice gd : GraphicsEnvironment.getLocalGraphicsEnvironment( ).getScreenDevices( ) )
-		{
-			max = Math.max( max, of( gd.getDefaultConfiguration( ) ) );
-		}
-		return max;
-	}
+    /** JDK Windows screen origins are unscaled; only offsets within a monitor are scaled. */
+    static Rectangle toLogical(final Rectangle physical, final GraphicsConfiguration gc) {
+        final Rectangle origin = gc.getBounds();
+        final AffineTransform scale = gc.getDefaultTransform();
+        return new Rectangle(
+                origin.x + (int)Math.round(((double)physical.x - origin.x) / scale.getScaleX()),
+                origin.y + (int)Math.round(((double)physical.y - origin.y) / scale.getScaleY()),
+                (int)Math.round(physical.width / scale.getScaleX()),
+                (int)Math.round(physical.height / scale.getScaleY()));
+    }
 
-	/** 逻辑点所在显示器的缩放(找不到则回退主屏) */
-	static double atLogicalPoint( final Point logical ) {
-		final GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment( );
-		for ( final GraphicsDevice gd : ge.getScreenDevices( ) ) {
-			final GraphicsConfiguration gc = gd.getDefaultConfiguration( );
-			if ( gc.getBounds( ).contains( logical ) ) {
-				return of( gc );
-			}
-		}
-		return primary( );
-	}
+    static Rectangle toPhysical(final Rectangle logical, final GraphicsConfiguration gc) {
+        final Rectangle origin = gc.getBounds();
+        final AffineTransform scale = gc.getDefaultTransform();
+        return new Rectangle(
+                origin.x + (int)Math.round(((double)logical.x - origin.x) * scale.getScaleX()),
+                origin.y + (int)Math.round(((double)logical.y - origin.y) * scale.getScaleY()),
+                (int)Math.round(logical.width * scale.getScaleX()),
+                (int)Math.round(logical.height * scale.getScaleY()));
+    }
 
-	/** 物理矩形中心所在显示器的缩放(找不到则回退主屏) */
-	static double atPhysicalRect( final Rectangle physical ) {
-		final GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment( );
-		final int cx = physical.x + physical.width / 2;
-		final int cy = physical.y + physical.height / 2;
-		for ( final GraphicsDevice gd : ge.getScreenDevices( ) ) {
-			final GraphicsConfiguration gc = gd.getDefaultConfiguration( );
-			final double scale = of( gc );
-			final Point logical = new Point( (int)Math.round( cx / scale ), (int)Math.round( cy / scale ) );
-			if ( gc.getBounds( ).contains( logical ) ) {
-				return scale;
-			}
-		}
-		return primary( );
-	}
+    static Point toLogicalScreenPoint(final int x, final int y) {
+        final Rectangle physical = new Rectangle(x, y, 1, 1);
+        return toLogical(physical, atPhysicalRect(physical)).getLocation();
+    }
 
-	/** 物理矩形 → 逻辑矩形 */
-	static Rectangle toLogical( final Rectangle physical, final double scale ) {
-		return new Rectangle(
-				(int)Math.round( physical.x / scale ),
-				(int)Math.round( physical.y / scale ),
-				(int)Math.round( physical.width / scale ),
-				(int)Math.round( physical.height / scale ) );
-	}
+    static Point cursorVelocity(Point previous, Point current, Point velocity,
+                                GraphicsConfiguration source, GraphicsConfiguration target) {
+        final Rectangle oldPoint = new Rectangle(previous.x, previous.y, 0, 0);
+        final Rectangle rebased = toLogical(toPhysical(oldPoint, source), target);
+        final AffineTransform oldScale = source.getDefaultTransform();
+        final AffineTransform newScale = target.getDefaultTransform();
+        return new Point(
+                (int)Math.round((velocity.x * oldScale.getScaleX() / newScale.getScaleX() + current.x - rebased.x) / 2),
+                (int)Math.round((velocity.y * oldScale.getScaleY() / newScale.getScaleY() + current.y - rebased.y) / 2));
+    }
 
-	/** 逻辑矩形 → 物理矩形 */
-	static Rectangle toPhysical( final Rectangle logical, final double scale ) {
-		return new Rectangle(
-				(int)Math.round( logical.x * scale ),
-				(int)Math.round( logical.y * scale ),
-				(int)Math.round( logical.width * scale ),
-				(int)Math.round( logical.height * scale ) );
-	}
+    static MONITORINFO monitorInfo(final GraphicsConfiguration gc) {
+        final Rectangle physical = toPhysical(gc.getBounds(), gc);
+        final com.group_finity.mascot.win.jna.POINT.ByValue centre = new com.group_finity.mascot.win.jna.POINT.ByValue();
+        centre.x = physical.x + physical.width / 2;
+        centre.y = physical.y + physical.height / 2;
+        final Pointer monitor = User32.INSTANCE.MonitorFromPoint(centre, User32.MONITOR_DEFAULTTONEAREST);
+        final MONITORINFO info = new MONITORINFO();
+        info.cbSize = new NativeLong(info.size());
+        return monitor != null && User32.INSTANCE.GetMonitorInfoW(monitor, info) != 0 ? info : null;
+    }
 
-	/** Screen origins are shared by AWT and Win32. Scale the offset within the monitor. */
-	static Point toLogicalScreenPoint( final int x, final int y ) {
-		for( final GraphicsDevice device : GraphicsEnvironment.getLocalGraphicsEnvironment( ).getScreenDevices( ) )
-		{
-			final GraphicsConfiguration gc = device.getDefaultConfiguration( );
-			final Rectangle bounds = gc.getBounds( );
-			final AffineTransform scale = gc.getDefaultTransform( );
-			final double dx = ( (double)x - bounds.x ) / scale.getScaleX( );
-			final double dy = ( (double)y - bounds.y ) / scale.getScaleY( );
-			if( dx >= 0 && dx < bounds.width && dy >= 0 && dy < bounds.height )
-				return new Point( bounds.x + (int)dx, bounds.y + (int)dy );
-		}
-		return new Point( x, y );
-	}
+    /** Native adjacency stays here: mixed-DPI AWT rectangles may have artificial gaps or overlaps. */
+    static int adjacentScreen(int source, com.group_finity.mascot.environment.ScreenTraversal.Edge edge, double fraction) {
+        final GraphicsDevice[] devices = GraphicsEnvironment.getLocalGraphicsEnvironment().getScreenDevices();
+        if (source < 0 || source >= devices.length) return -1;
+        final MONITORINFO sourceInfo = monitorInfo(devices[source].getDefaultConfiguration());
+        if (sourceInfo == null) return -1;
+        final RECT a = sourceInfo.rcMonitor;
+        final boolean horizontal = edge == com.group_finity.mascot.environment.ScreenTraversal.Edge.LEFT
+                || edge == com.group_finity.mascot.environment.ScreenTraversal.Edge.RIGHT;
+        final double along = horizontal ? a.top + fraction * a.Height() : a.left + fraction * a.Width();
+        int result = -1;
+        double best = Double.POSITIVE_INFINITY;
+        for (int i = 0; i < devices.length; i++) {
+            if (i == source) continue;
+            final MONITORINFO targetInfo = monitorInfo(devices[i].getDefaultConfiguration());
+            if (targetInfo == null) continue;
+            final RECT b = targetInfo.rcMonitor;
+            final boolean touches = switch (edge) {
+                case LEFT -> a.left == b.right;
+                case RIGHT -> a.right == b.left;
+                case TOP -> a.top == b.bottom;
+                case BOTTOM -> a.bottom == b.top;
+            };
+            final int low = horizontal ? b.top : b.left;
+            final int high = horizontal ? b.bottom : b.right;
+            final int aLow = horizontal ? a.top : a.left;
+            final int aHigh = horizontal ? a.bottom : a.right;
+            if (!touches || Math.max(low, aLow) >= Math.min(high, aHigh)) continue;
+            final double distance = Math.max(0, Math.max(low - along, along - high));
+            if (distance < best) { best = distance; result = i; }
+        }
+        return result;
+    }
 }

@@ -527,6 +527,7 @@ public class Mascot
 
     void tick( )
     {
+        getEnvironment().synchronizeScreen();
         if( isAnimating( ) )
         {
             if( getBehavior( ) != null )
@@ -731,6 +732,14 @@ public class Mascot
     public void setAnchor( Point anchor )
     {
         this.anchor = anchor;
+    }
+
+    /** Movement can cross a proportional screen portal; absolute placement keeps setAnchor semantics. */
+    public com.group_finity.mascot.environment.ScreenTraversal.Step moveAnchor(Point desired) {
+        final var step = getEnvironment().move(getAnchor(), desired);
+        setAnchor(step.position());
+        if (step.crossed()) renderSnap = true;
+        return step;
     }
 
     public MascotImage getImage( )

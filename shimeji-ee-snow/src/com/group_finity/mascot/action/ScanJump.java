@@ -68,6 +68,7 @@ public class ScanJump extends ActionBase
     @Override
     public boolean hasNext( ) throws VariableException
     {
+        if (screenChanged()) return false;
         if( getMascot( ).getManager( ) == null )
             return super.hasNext( );
         
@@ -106,9 +107,10 @@ public class ScanJump extends ActionBase
             putVariable( getSchema( ).getString( VARIABLE_VELOCITYX ), velocity * distanceX / distance );
             putVariable( getSchema( ).getString( VARIABLE_VELOCITYY ), velocity * distanceY / distance );
 
-            getMascot( ).setAnchor( new Point( getMascot( ).getAnchor( ).x + velocityX, 
+            getMascot( ).moveAnchor( new Point( getMascot( ).getAnchor( ).x + velocityX,
                                                getMascot( ).getAnchor( ).y + velocityY ) );
             getAnimation( ).next( getMascot( ),getTime( ) );
+            if (screenChanged()) return;
         }
 
         if( distance <= velocity )

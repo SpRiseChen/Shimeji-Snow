@@ -84,6 +84,7 @@ public class Move extends BorderedAction
         }
 
         getAnimation( ).next( getMascot( ), getTime( ) );
+        if (screenChanged()) return;
 
         if( targetX != DEFAULT_TARGETX )
         {

@@ -21,6 +21,10 @@ public class MascotEnvironment
     private final Mascot mascot;
 
     private Area currentWorkArea;
+    private int currentScreen = -1;
+    private int screenRevision;
+    private final java.util.Map<Integer, Area> workAreas = new java.util.HashMap<>();
+    private final java.util.Map<Integer, Integer> workAreaTicks = new java.util.HashMap<>();
 
     /** 白名单多窗口:本宠物当前认领的交互窗口(粘性,拖/扔期间不换手)。 */
     private Area selectedIE;
@@ -44,60 +48,94 @@ public class MascotEnvironment
 
     public Area getWorkArea( Boolean ignoreSettings )
     {
-        // 阶段 3c:ActivityScreen 指定活动屏幕(主屏/序号)时,工作区锁定该屏(等同 Multiscreen=false 的
-        // 锁定语义:被抛到别的屏会自己走回来);ignoreSettings(拖拽等)仍走下方漫游逻辑
-        if( !ignoreSettings )
-        {
-            final String activityScreen = Main.getInstance( ).getProperties( ).getProperty( "ActivityScreen", "mouse" );
-            final int lockedIndex = screenIndexOf( activityScreen );
-            if( lockedIndex >= 0 )
-            {
-                currentWorkArea = new Area( );
-                currentWorkArea.set( impl.getScreenWorkArea( lockedIndex ) );
-                return currentWorkArea;
-            }
+        int locked = ignoreSettings ? -1 : screenIndexOf(Main.getInstance().getProperties().getProperty("ActivityScreen", "mouse"));
+        int selected = locked >= 0 ? locked : currentScreen;
+        if (selected < 0 || selected >= impl.getScreenCount()) {
+            selected = screenContaining(mascot.getAnchor());
+            if (selected < 0) selected = impl.getCursorScreenIndex();
         }
-
-        if ( currentWorkArea != null )
-        {
-            if( ignoreSettings || ( Boolean.parseBoolean( Main.getInstance( ).getProperties( ).getProperty( "Multiscreen", "true" ) ) ) )
-            {
-                // NOTE Windows
-                if( currentWorkArea != impl.getWorkArea( ) && currentWorkArea.toRectangle( ).contains( impl.getWorkArea( ).toRectangle( ) ) )
-                {
-                    if( impl.getWorkArea( ).contains( mascot.getAnchor( ).x, mascot.getAnchor( ).y ) )
-                    {
-                        currentWorkArea = impl.getWorkArea( );
-                        return currentWorkArea;
-                    }
-                }
-
-                // NOTE
-                if ( currentWorkArea.contains( mascot.getAnchor( ).x, mascot.getAnchor( ).y ) ) 
-                {
-                    return currentWorkArea;
-                }
-            }
-            else return currentWorkArea;
-        }
-
-        if( impl.getWorkArea( ).contains( mascot.getAnchor( ).x, mascot.getAnchor( ).y ) )
-        {
-            currentWorkArea = impl.getWorkArea( );
-            return currentWorkArea;
-        }
-
-        for( Area area: impl.getScreens( ) )
-        {
-            if ( area.contains( mascot.getAnchor( ).x, mascot.getAnchor( ).y ) )
-            {
-                currentWorkArea = area;
-                return currentWorkArea;
-            }
-        }
-
-        currentWorkArea = impl.getWorkArea( );
+        selectScreen(Math.max(0, Math.min(impl.getScreenCount() - 1, selected)));
+        currentWorkArea = workArea(currentScreen);
         return currentWorkArea;
+    }
+
+    private Area workArea(int index) {
+        Area area = workAreas.computeIfAbsent(index, key -> new Area());
+        if (!Integer.valueOf(mascot.getTime()).equals(workAreaTicks.get(index))) {
+            area.set(impl.getScreenWorkArea(index));
+            workAreaTicks.put(index, mascot.getTime());
+        }
+        return area;
+    }
+
+    private void selectScreen(int index) {
+        if (currentScreen != index) {
+            currentScreen = index;
+            screenRevision++;
+        }
+    }
+
+    private int screenContaining(Point point) {
+        for (int i = 0; i < impl.getScreenCount(); i++) {
+            Rectangle r = impl.getScreenBounds(i);
+            if (r.contains(point)) return i;
+        }
+        return -1;
+    }
+
+    /** Synchronize absolute placement once per logic tick; collision probes never select another device. */
+    public void synchronizeScreen() {
+        getWorkArea();
+        if (canTraverseScreens() && !currentWorkArea.contains(mascot.getAnchor().x, mascot.getAnchor().y)) {
+            int screen = screenContaining(mascot.getAnchor());
+            if (screen >= 0) selectScreen(screen);
+        }
+    }
+
+    private boolean canTraverseScreens() {
+        return Boolean.parseBoolean(Main.getInstance().getProperties().getProperty("Multiscreen", "true"))
+                && screenIndexOf(Main.getInstance().getProperties().getProperty("ActivityScreen", "mouse")) < 0;
+    }
+
+    public int getScreenRevision() { return screenRevision; }
+
+    public ScreenTraversal.Step move(Point from, Point to) {
+        Rectangle source = getWorkArea().toRectangle();
+        if (!canTraverseScreens()) {
+            // A drag can place the anchor outside a locked screen. Catch it on release as well.
+            int y = Math.min(source.y + source.height, to.y);
+            if (from.y >= source.y) y = Math.max(source.y, y);
+            to = new Point(Math.max(source.x, Math.min(source.x + source.width, to.x)), y);
+            return new ScreenTraversal.Step(to, -1, 1, 1);
+        }
+        ScreenTraversal.Step step = ScreenTraversal.move(from, to, source,
+                (edge, fraction) -> impl.getAdjacentScreen(currentScreen, edge, fraction),
+                index -> workArea(index).toRectangle());
+        if (step.crossed()) {
+            selectScreen(step.screen());
+            currentWorkArea = workArea(currentScreen);
+        }
+        return step;
+    }
+
+    private boolean interactive(ScreenTraversal.Edge edge) {
+        getWorkArea();
+        return !canTraverseScreens() || impl.getAdjacentScreen(currentScreen, edge, 0.5) < 0;
+    }
+
+    public boolean isWorkAreaLeftInteractive() { return interactive(ScreenTraversal.Edge.LEFT); }
+    public boolean isWorkAreaRightInteractive() { return interactive(ScreenTraversal.Edge.RIGHT); }
+    public Border getWorkAreaLeftWall() { return isWorkAreaLeftInteractive() ? getWorkArea().getLeftBorder() : NotOnBorder.INSTANCE; }
+    public Border getWorkAreaRightWall() { return isWorkAreaRightInteractive() ? getWorkArea().getRightBorder() : NotOnBorder.INSTANCE; }
+    public Border getWorkAreaCeiling() { return interactive(ScreenTraversal.Edge.TOP) ? getWorkArea().getTopBorder() : NotOnBorder.INSTANCE; }
+    public Border getWorkAreaFloor() { return interactive(ScreenTraversal.Edge.BOTTOM) ? getWorkArea().getBottomBorder() : NotOnBorder.INSTANCE; }
+
+    public boolean isBorderInteractive(Border border) {
+        if (border instanceof Wall wall && workAreas.containsValue(wall.getArea()))
+            return interactive(wall.isRight() ? ScreenTraversal.Edge.RIGHT : ScreenTraversal.Edge.LEFT);
+        if (border instanceof FloorCeiling floor && workAreas.containsValue(floor.getArea()))
+            return interactive(floor.isBottom() ? ScreenTraversal.Edge.BOTTOM : ScreenTraversal.Edge.TOP);
+        return border != NotOnBorder.INSTANCE;
     }
 
     /** ActivityScreen 设置值 → 屏幕序号:mouse=-1(不锁定),primary=主屏序,其余解析为非负整数。 */
@@ -226,10 +264,7 @@ public class MascotEnvironment
         }
         if( getWorkArea( ).getTopBorder( ).isOn( mascot.getAnchor( ) ) )
         {
-            if ( !ignoreSeparator || isScreenTopBottom( ) )
-            {
-                    return getWorkArea( ).getTopBorder( );
-            }
+            return getWorkAreaCeiling();
         }
         return NotOnBorder.INSTANCE;
     }
@@ -258,10 +293,7 @@ public class MascotEnvironment
         }
         if( getWorkArea( ).getBottomBorder( ).isOn( mascot.getAnchor( ) ) )
         {
-            if( !ignoreSeparator || isScreenTopBottom( ) )
-            {
-                return getWorkArea( ).getBottomBorder( );
-            }
+            return getWorkAreaFloor();
         }
         return NotOnBorder.INSTANCE;
     }
@@ -288,10 +320,7 @@ public class MascotEnvironment
 
             if( getWorkArea( ).getRightBorder( ).isOn( mascot.getAnchor( ) ) )
             {
-                if( !ignoreSeparator || isScreenLeftRight( ) )
-                {
-                    return getWorkArea( ).getRightBorder( );
-                }
+                return getWorkAreaRightWall();
             }
         }
         else
@@ -304,10 +333,7 @@ public class MascotEnvironment
 
             if( getWorkArea( ).getLeftBorder( ).isOn( mascot.getAnchor( ) ) )
             {
-                if( !ignoreSeparator || isScreenLeftRight( ) )
-                {
-                    return getWorkArea( ).getLeftBorder( );
-                }
+                return getWorkAreaLeftWall();
             }
         }
 
@@ -334,6 +360,7 @@ public class MascotEnvironment
     
     public void refreshWorkArea( )
     {
+        selectScreen(impl.getCursorScreenIndex());
         getWorkArea( true );
     }
 

@@ -52,10 +52,17 @@ public abstract class BorderedAction extends ActionBase {
 
 	@Override
 	protected void tick() throws LostGroundException, VariableException {
+        if (screenChanged() || (border != null && !getEnvironment().isBorderInteractive(border)))
+            throw new LostGroundException();
 		if (getBorder() != null) {
 			getMascot().setAnchor(getBorder().move(getMascot().getAnchor()));
 		}
 	}
+
+    @Override
+    public boolean hasNext() throws VariableException {
+        return !screenChanged() && (border == null || getEnvironment().isBorderInteractive(border)) && super.hasNext();
+    }
 
 	private String getBorderType() throws VariableException {
 		return eval( getSchema( ).getString( PARAMETER_BORDERTYPE ), String.class, DEFAULT_BORDERTYPE);

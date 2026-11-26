@@ -35,6 +35,15 @@ class VirtualEnvironment extends Environment
     }
 
     @Override
+    public int getScreenCount() { return 1; }
+
+    @Override
+    public int getCursorScreenIndex() { return 0; }
+
+    @Override
+    public java.awt.Rectangle getScreenBounds(int index) { return getScreen().toRectangle(); }
+
+    @Override
     public Area getActiveIE( )
     {
         return activeIE;

@@ -661,12 +661,12 @@
 				<ActionReference Name="Falling"/>
 				<ActionReference Name="Bouncing" />
 			</Action>
-			<Action Type="Sequence" Condition="${mascot.environment.workArea.leftBorder.isOn(mascot.anchor) || mascot.environment.activeIE.rightBorder.isOn(mascot.anchor)}">
+			<Action Type="Sequence" Condition="${mascot.environment.workAreaLeftWall.isOn(mascot.anchor) || mascot.environment.activeIE.rightBorder.isOn(mascot.anchor)}">
 				<ActionReference Name="Offset" X="1" />
 				<ActionReference Name="Falling"/>
 				<ActionReference Name="Bouncing" />
 			</Action>
-			<Action Type="Sequence" Condition="${mascot.environment.workArea.rightBorder.isOn(mascot.anchor) || mascot.environment.activeIE.leftBorder.isOn(mascot.anchor)}">
+			<Action Type="Sequence" Condition="${mascot.environment.workAreaRightWall.isOn(mascot.anchor) || mascot.environment.activeIE.leftBorder.isOn(mascot.anchor)}">
 				<ActionReference Name="Offset" X="-1" />
 				<ActionReference Name="Falling"/>
 				<ActionReference Name="Bouncing" />

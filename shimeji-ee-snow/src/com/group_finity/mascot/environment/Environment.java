@@ -185,6 +185,24 @@ public abstract class Environment
         return getScreenBounds( index );
     }
 
+    public int getScreenCount() {
+        return GraphicsEnvironment.getLocalGraphicsEnvironment().getScreenDevices().length;
+    }
+
+    public int getCursorScreenIndex() {
+        final java.awt.PointerInfo pointer = MouseInfo.getPointerInfo();
+        final GraphicsDevice[] devices = GraphicsEnvironment.getLocalGraphicsEnvironment().getScreenDevices();
+        for (int i = 0; pointer != null && i < devices.length; i++)
+            if (devices[i].equals(pointer.getDevice())) return i;
+        return getPrimaryScreenIndex();
+    }
+
+    public int getAdjacentScreen(int source, ScreenTraversal.Edge edge, double fraction) {
+        Rectangle[] bounds = new Rectangle[getScreenCount()];
+        for (int i = 0; i < bounds.length; i++) bounds[i] = getScreenBounds(i);
+        return ScreenTraversal.neighbor(bounds, source, edge, fraction);
+    }
+
     public Collection<Area> getScreens( )
     {
         return complexScreen.getAreas( );

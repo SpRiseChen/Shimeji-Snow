@@ -87,9 +87,9 @@
 
 		<!-- On the Wall -->
 		<Condition Condition="#{ mascot.lookRight ? (
-					mascot.environment.workArea.rightBorder.isOn(mascot.anchor) || 
+					mascot.environment.workAreaRightWall.isOn(mascot.anchor) ||
 					mascot.environment.activeIE.leftBorder.isOn(mascot.anchor) ) : (
-					mascot.environment.workArea.leftBorder.isOn(mascot.anchor) || 
+					mascot.environment.workAreaLeftWall.isOn(mascot.anchor) ||
 					mascot.environment.activeIE.rightBorder.isOn(mascot.anchor) ) }">
 			<Behavior Name="HoldOntoWall" Frequency="20" Hidden="true" />
 			<Behavior Name="FallFromWall" Frequency="100" Condition="${!mascot.environment.floor.isOn(mascot.anchor)}" Hidden="true" />
@@ -113,12 +113,12 @@
 			</Behavior>
 			<Behavior Name="WalkLeftAlongFloorAndSit" Frequency="25" Hidden="true" />
 			<Behavior Name="WalkRightAlongFloorAndSit" Frequency="25" Hidden="true" />
-			<Behavior Name="GrabWorkAreaBottomLeftWall" Frequency="15" Hidden="true" />
-			<Behavior Name="GrabWorkAreaBottomRightWall" Frequency="15" Hidden="true" />
+			<Behavior Name="GrabWorkAreaBottomLeftWall" Frequency="15" Hidden="true" Condition="#{mascot.environment.workAreaLeftInteractive}" />
+			<Behavior Name="GrabWorkAreaBottomRightWall" Frequency="15" Hidden="true" Condition="#{mascot.environment.workAreaRightInteractive}" />
 			<Behavior Name="WalkLeftAndSit" Frequency="25" Hidden="true" />
 			<Behavior Name="WalkRightAndSit" Frequency="25" Hidden="true" />
-			<Behavior Name="WalkAndGrabBottomLeftWall" Frequency="15" />
-			<Behavior Name="WalkAndGrabBottomRightWall" Frequency="15" />
+			<Behavior Name="WalkAndGrabBottomLeftWall" Frequency="15" Condition="#{mascot.environment.workAreaLeftInteractive}" />
+			<Behavior Name="WalkAndGrabBottomRightWall" Frequency="15" Condition="#{mascot.environment.workAreaRightInteractive}" />
 			<Behavior Name="JumpFromBottomOfIE" Frequency="50" Condition="#{mascot.anchor.x &gt;= mascot.environment.activeIE.left &amp;&amp;
 				mascot.anchor.x &lt; mascot.environment.activeIE.right}" />
 				
@@ -142,8 +142,8 @@
 		</Condition>
 		
 		<!-- On Work Area Facing the Wall -->
-		<Condition Condition="#{mascot.lookRight ? mascot.environment.workArea.rightBorder.isOn(mascot.anchor) :
-					mascot.environment.workArea.leftBorder.isOn(mascot.anchor)}">
+		<Condition Condition="#{mascot.lookRight ? mascot.environment.workAreaRightWall.isOn(mascot.anchor) :
+					mascot.environment.workAreaLeftWall.isOn(mascot.anchor)}">
 			<Behavior Name="ClimbHalfwayAlongWall" Frequency="40" Hidden="true" />
 			<Behavior Name="ClimbAlongWall" Frequency="30" />
 		</Condition>
@@ -188,10 +188,10 @@
 			<Behavior Name="GrabIEBottomRightWall" Frequency="100" Hidden="true" />
 		</Condition>
 		
-		<Behavior Name="JumpFromLeftWall" Frequency="50" Condition="#{!mascot.environment.workArea.leftBorder.isOn(mascot.anchor) &amp;&amp;
+		<Behavior Name="JumpFromLeftWall" Frequency="50" Condition="#{mascot.environment.workAreaLeftInteractive &amp;&amp; !mascot.environment.workAreaLeftWall.isOn(mascot.anchor) &amp;&amp;
 			mascot.anchor.x &lt; mascot.environment.workArea.left+400 &amp;&amp;
 			Math.abs(mascot.environment.workArea.bottom-mascot.anchor.y) &lt;mascot.environment.workArea.height/4}" Hidden="true" />
-		<Behavior Name="JumpFromRightWall" Frequency="50" Condition="#{!mascot.environment.workArea.rightBorder.isOn(mascot.anchor) &amp;&amp;
+		<Behavior Name="JumpFromRightWall" Frequency="50" Condition="#{mascot.environment.workAreaRightInteractive &amp;&amp; !mascot.environment.workAreaRightWall.isOn(mascot.anchor) &amp;&amp;
 			mascot.anchor.x &gt;= mascot.environment.workArea.right-400 &amp;&amp;
 			Math.abs(mascot.environment.workArea.bottom-mascot.anchor.y) &lt;mascot.environment.workArea.height/4}" Hidden="true" />
 

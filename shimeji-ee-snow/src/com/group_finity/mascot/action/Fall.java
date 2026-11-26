@@ -100,16 +100,32 @@ public class Fall extends ActionBase {
         this.setModX( this.getModX( ) % 1 );
         this.setModY( this.getModY( ) % 1 );
 
-        int dev = Math.max( 1, Math.max( Math.abs( dx ), Math.abs( dy ) ) );
+        double px = getMascot().getAnchor().x, py = getMascot().getAnchor().y;
+        double motionX = dx, motionY = dy, remaining = 1;
+        boolean first = true;
 
-        Point start = getMascot( ).getAnchor( );
-
-        OUTER: for( int i = 0; i <= dev; ++i )
+        OUTER: while (first || remaining > 1e-9)
         {
-            int x = start.x + dx * i / dev;
-            int y = start.y + dy * i / dev;
-
-            getMascot( ).setAnchor( new Point( x, y ) );
+            if (!first) {
+                double dt = Math.min(remaining, 1 / Math.max(1, Math.max(Math.abs(motionX), Math.abs(motionY))));
+                px += motionX * dt;
+                py += motionY * dt;
+                remaining -= dt;
+            }
+            first = false;
+            Point desired = new Point((int)Math.round(px), (int)Math.round(py));
+            var step = getMascot().moveAnchor(desired);
+            if (step.crossed()) {
+                px = step.position().x + (px - desired.x) * step.scaleX();
+                py = step.position().y + (py - desired.y) * step.scaleY();
+                motionX *= step.scaleX();
+                motionY *= step.scaleY();
+                velocityX *= step.scaleX();
+                velocityY *= step.scaleY();
+                modX *= step.scaleX();
+                modY *= step.scaleY();
+            }
+            int x = step.position().x, y = step.position().y;
             if( dy > 0 )
             {
                 // HACK IE
@@ -128,6 +144,8 @@ public class Fall extends ActionBase {
             }
         }
 
+        putVariable(getSchema().getString(VARIABLE_VELOCITYX), getVelocityX());
+        putVariable(getSchema().getString(VARIABLE_VELOCITYY), getVelocityY());
         getAnimation( ).next( getMascot( ), getTime( ) );
     }
 
