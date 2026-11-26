@@ -168,6 +168,8 @@ public final class SettingsFrame extends JDialog
 		this.initialAlpha = Mascot.windowAlphaFromSettings( );
 
 		setTitle( text( "Settings", "Settings" ) );
+		// Mascot windows are always-on-top; show this modal dialog above them.
+		setAlwaysOnTop( true );
 		setDefaultCloseOperation( WindowConstants.DO_NOTHING_ON_CLOSE );
 		if( icon != null )
 			setIconImage( icon );
