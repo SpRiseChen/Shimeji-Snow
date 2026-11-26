@@ -61,6 +61,19 @@ public final class ScreenProjection {
     private record Position(int screen, double x, double y) { }
     private ScreenProjection() { }
 
+    /** Keep an existing screen while visible; otherwise choose the most complete sprite projection. */
+    public static View selectView(List<View> views, Rectangle preferredScreen) {
+        View best = null;
+        double largest = -1;
+        for (View view : views) {
+            Rectangle clip = view.clip();
+            if (preferredScreen != null && !preferredScreen.intersects(clip)) continue;
+            double fraction = (double)clip.width * clip.height / (view.width() * view.height());
+            if (fraction > largest) { best = view; largest = fraction; }
+        }
+        return best == null && preferredScreen != null ? selectView(views, null) : best;
+    }
+
     public static List<View> project(MascotImage image, Point anchor, Context context) {
         Layout layout = context.layout();
         if (layout.screens().isEmpty()) return List.of();

@@ -232,6 +232,12 @@ class WindowsTranslucentWindow extends JWindow implements TranslucentWindow {
         return projecting ? views.stream().map(ScreenProjection.View::clip).toList() : List.of(getBounds());
     }
 
+    @Override public DisplayAnchor displayAnchor(Rectangle preferredScreen) {
+        if (!projecting) return TranslucentWindow.super.displayAnchor(preferredScreen);
+        ScreenProjection.View selected = ScreenProjection.selectView(views, preferredScreen);
+        return selected == null ? null : new DisplayAnchor(selected.imageBounds(), selected.clip());
+    }
+
     @Override public void setImage(NativeImage image) { this.image = (WindowsNativeImage)image; }
     public int getAlpha() { return alpha; }
     @Override public void setAlpha(int alpha) {

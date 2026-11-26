@@ -45,6 +45,21 @@ public interface TranslucentWindow
 
     default java.util.List<Rectangle> displayRegions() { return java.util.List.of(asComponent().getBounds()); }
 
+    /** Full sprite placement and its visible crop are distinct on a projected desktop. */
+    record DisplayAnchor(Rectangle bounds, Rectangle visible) {
+        public DisplayAnchor {
+            bounds = new Rectangle(bounds);
+            visible = new Rectangle(visible);
+        }
+        @Override public Rectangle bounds() { return new Rectangle(bounds); }
+        @Override public Rectangle visible() { return new Rectangle(visible); }
+    }
+
+    default DisplayAnchor displayAnchor(Rectangle preferredScreen) {
+        Rectangle bounds = displayBounds(null);
+        return bounds == null || bounds.isEmpty() ? null : new DisplayAnchor(bounds, bounds);
+    }
+
     default void showPopup(JPopupMenu popup, int x, int y) {
         popup.show(asComponent(), x, y);
     }

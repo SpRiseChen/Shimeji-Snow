@@ -13,6 +13,7 @@ import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 import com.group_finity.mascot.Main;
 import com.group_finity.mascot.Mascot;
+import com.group_finity.mascot.image.TranslucentWindow.DisplayAnchor;
 
 /** A single speech channel for the whole desktop, shared across all mascots. */
 public final class DialogueDirector {
@@ -30,6 +31,7 @@ public final class DialogueDirector {
     };
     private SpeechBubble bubble;
     private Mascot speaker;
+    private Rectangle speakerScreen;
     private long dismissAt;
     private boolean exiting;
     private Runnable afterGoodbye;
@@ -67,8 +69,7 @@ public final class DialogueDirector {
     private void safeFollow() {
         try {
             if (bubble == null) return;
-            if (!visible(speaker)) dismiss();
-            else positionBubble(speaker.getDisplayBounds());
+            positionBubble(speakerAnchor());
         } catch (Exception e) { displayFailed(e); }
     }
 
@@ -84,10 +85,13 @@ public final class DialogueDirector {
         followedComponent.addComponentListener(speakerMotion);
     }
 
-    private void positionBubble(Rectangle bounds) {
-        Rectangle screen = bounds == null ? null : BubblePlacement.screenFor(bounds, workAreas);
+    private void positionBubble(DisplayAnchor anchor) {
+        Rectangle screen = anchor == null ? null : BubblePlacement.screenFor(anchor.visible(), workAreas);
         if (screen == null) dismiss();
-        else bubble.position(bounds, screen, config);
+        else {
+            speakerScreen = new Rectangle(screen);
+            bubble.position(anchor.bounds(), screen, config);
+        }
     }
 
     private void tick(long now) {
@@ -95,7 +99,7 @@ public final class DialogueDirector {
         if (bubble != null) {
             workAreas = screens();
             if (now - dismissAt >= 0) dismiss();
-            else positionBubble(speakerBounds());
+            else positionBubble(speakerAnchor());
         }
         if (!exiting && bubble == null && schedule.peek() != null) {
             if (speak(schedule.peek(), config.reminderMillis())) schedule.consumed();
@@ -105,16 +109,19 @@ public final class DialogueDirector {
     private boolean speak(String kind, int millis) {
         List<Rectangle> screens = screens();
         workAreas = screens;
-        Rectangle bounds = null;
+        DisplayAnchor anchor = null;
         synchronized (Main.getInstance().getManager().getMascots()) {
             speaker = selectSpeaker(Main.getInstance().getManager().getMascots(), screens);
-            if (speaker != null) bounds = new Rectangle(speaker.getDisplayBounds());
+            if (speaker != null) anchor = speaker.getWindow().displayAnchor(null);
         }
-        if (bounds == null) return false;
+        if (anchor == null) return false;
+        Rectangle screen = BubblePlacement.screenFor(anchor.visible(), screens);
+        if (screen == null) return false;
         ResourceBundle language = Main.getInstance().getLanguageBundle();
         String message = message(language, kind);
         bubble = new SpeechBubble(message, language.getString(exiting ? "DialogueGoodbyeHint" : "DialogueDismissHint"), this::dismiss);
-        bubble.position(bounds, BubblePlacement.screenFor(bounds, screens), config);
+        speakerScreen = new Rectangle(screen);
+        bubble.position(anchor.bounds(), screen, config);
         dismissAt = System.nanoTime() + millis * 1_000_000L;
         followSpeaker();
         bubble.show();
@@ -139,15 +146,17 @@ public final class DialogueDirector {
     static Mascot selectSpeaker(List<Mascot> mascots, List<Rectangle> screens) {
         List<Mascot> candidates = new ArrayList<>();
         for (Mascot mascot : mascots) {
-            if (visible(mascot) && BubblePlacement.screenFor(mascot.getDisplayBounds(), screens) != null) candidates.add(mascot);
+            if (!visible(mascot)) continue;
+            DisplayAnchor anchor = mascot.getWindow().displayAnchor(null);
+            if (anchor != null && BubblePlacement.screenFor(anchor.visible(), screens) != null) candidates.add(mascot);
         }
         return candidates.isEmpty() ? null : candidates.get(ThreadLocalRandom.current().nextInt(candidates.size()));
     }
 
-    private Rectangle speakerBounds() {
+    private DisplayAnchor speakerAnchor() {
         synchronized (Main.getInstance().getManager().getMascots()) {
             if (!Main.getInstance().getManager().getMascots().contains(speaker) || !visible(speaker)) return null;
-            return new Rectangle(speaker.getDisplayBounds());
+            return speaker.getWindow().displayAnchor(speakerScreen);
         }
     }
 
@@ -177,6 +186,7 @@ public final class DialogueDirector {
         if (bubble != null) bubble.close();
         bubble = null;
         speaker = null;
+        speakerScreen = null;
     }
 
     private void finishGoodbye() {
