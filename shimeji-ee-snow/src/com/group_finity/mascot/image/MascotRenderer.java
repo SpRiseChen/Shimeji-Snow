@@ -21,6 +21,8 @@ public final class MascotRenderer {
     private boolean hidden;
     private boolean disposed;
     private boolean bypassed;
+    private ScreenProjection.Context context;
+    private ScreenProjection.Context paintedContext;
 
     public MascotRenderer(TranslucentWindow window, long intervalNanos, int teleportDistance) {
         this.window = window;
@@ -29,15 +31,21 @@ public final class MascotRenderer {
     }
 
     public synchronized void publish(Point anchor, MascotImage nextImage, boolean snap, long now) {
+        publish(anchor, nextImage, snap, now, null);
+    }
+
+    public synchronized void publish(Point anchor, MascotImage nextImage, boolean snap, long now, ScreenProjection.Context nextContext) {
         if (disposed) return;
         boolean discontinuity = target == null || nextImage == null || image == null || snap || bypassed || hidden
                 || Math.abs((long)anchor.x - target.x) > teleportDistance
                 || Math.abs((long)anchor.y - target.y) > teleportDistance
                 || now - started > interval * 2;
-        boolean changed = target == null || !target.equals(anchor) || image != nextImage;
+        boolean changed = target == null || !target.equals(anchor) || image != nextImage
+                || !java.util.Objects.equals(context, nextContext);
         previous = discontinuity ? new Point(anchor) : new Point(target);
         target = new Point(anchor);
         image = nextImage;
+        context = nextContext;
         started = now;
         bypassed = snap;
         dirty |= changed && !hidden;
@@ -69,7 +77,7 @@ public final class MascotRenderer {
     }
 
     public synchronized Rectangle displayBounds() {
-        return paintedBounds == null ? null : new Rectangle(paintedBounds);
+        return paintedBounds == null ? null : window.displayBounds(null);
     }
 
     public synchronized void render(long now) {
@@ -84,13 +92,12 @@ public final class MascotRenderer {
         Point anchor = position(now);
         Rectangle bounds = new Rectangle(anchor.x - image.getCenter().x, anchor.y - image.getCenter().y,
                 image.getSize().width, image.getSize().height);
-        boolean changed = !bounds.equals(paintedBounds) || paintedImage != image.getImage() || !component.isVisible();
-        if (!bounds.equals(paintedBounds)) component.setBounds(bounds);
-        if (paintedImage != image.getImage()) window.setImage(image.getImage());
-        if (!component.isVisible()) component.setVisible(true);
-        if (changed) window.updateImage();
+        boolean changed = !bounds.equals(paintedBounds) || paintedImage != image.getImage() || !component.isVisible()
+                || !java.util.Objects.equals(context, paintedContext);
+        if (changed) window.present(image, anchor, context);
         paintedBounds = bounds;
         paintedImage = image.getImage();
+        paintedContext = context;
         displayed = anchor;
         dirty = false;
     }

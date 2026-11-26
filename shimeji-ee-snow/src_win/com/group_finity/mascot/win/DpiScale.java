@@ -98,6 +98,48 @@ final class DpiScale {
         return monitor != null && User32.INSTANCE.GetMonitorInfoW(monitor, info) != 0 ? info : null;
     }
 
+    static com.group_finity.mascot.image.ScreenProjection.Layout projectionLayout() {
+        final GraphicsDevice[] devices = GraphicsEnvironment.getLocalGraphicsEnvironment().getScreenDevices();
+        final var screens = new java.util.ArrayList<com.group_finity.mascot.image.ScreenProjection.Screen>();
+        final var links = new java.util.ArrayList<com.group_finity.mascot.image.ScreenProjection.Link>();
+        final RECT[] physical = new RECT[devices.length];
+        int reference = 0;
+        for (int i = 0; i < devices.length; i++) {
+            final GraphicsConfiguration gc = devices[i].getDefaultConfiguration();
+            if (devices[i].equals(GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice())) reference = i;
+            final MONITORINFO info = monitorInfo(gc);
+            Rectangle work = gc.getBounds();
+            if (info != null) {
+                physical[i] = info.rcMonitor;
+                RECT r = info.rcWork;
+                work = toLogical(new Rectangle(r.left, r.top, r.Width(), r.Height()), gc);
+            }
+            screens.add(new com.group_finity.mascot.image.ScreenProjection.Screen(work));
+        }
+        for (int i = 0; i < devices.length; i++) for (int j = 0; j < devices.length; j++) {
+            if (i == j || physical[i] == null || physical[j] == null) continue;
+            final RECT a = physical[i], b = physical[j];
+            for (var edge : com.group_finity.mascot.environment.ScreenTraversal.Edge.values()) {
+                boolean touches = switch (edge) {
+                    case LEFT -> a.left == b.right;
+                    case RIGHT -> a.right == b.left;
+                    case TOP -> a.top == b.bottom;
+                    case BOTTOM -> a.bottom == b.top;
+                };
+                boolean horizontal = edge == com.group_finity.mascot.environment.ScreenTraversal.Edge.LEFT
+                        || edge == com.group_finity.mascot.environment.ScreenTraversal.Edge.RIGHT;
+                int low = Math.max(horizontal ? a.top : a.left, horizontal ? b.top : b.left);
+                int high = Math.min(horizontal ? a.bottom : a.right, horizontal ? b.bottom : b.right);
+                int origin = horizontal ? a.top : a.left;
+                int length = horizontal ? a.Height() : a.Width();
+                if (touches && high > low && length > 0)
+                    links.add(new com.group_finity.mascot.image.ScreenProjection.Link(i, j, edge,
+                            (double)(low - origin) / length, (double)(high - origin) / length));
+            }
+        }
+        return new com.group_finity.mascot.image.ScreenProjection.Layout(screens, links, reference);
+    }
+
     /** Native adjacency stays here: mixed-DPI AWT rectangles may have artificial gaps or overlaps. */
     static int adjacentScreen(int source, com.group_finity.mascot.environment.ScreenTraversal.Edge edge, double fraction) {
         final GraphicsDevice[] devices = GraphicsEnvironment.getLocalGraphicsEnvironment().getScreenDevices();

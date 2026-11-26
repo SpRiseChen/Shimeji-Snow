@@ -82,6 +82,9 @@ public class Dragged extends ActionBase
             offsetX = 0 - offsetX + getMascot( ).getImage( ).getCenter( ).x;
             offsetY = 0 - offsetY + getMascot( ).getImage( ).getCenter( ).y;
         }
+        final double displayScale = getEnvironment().getDisplayScale();
+        offsetX = (int)Math.round(offsetX * displayScale);
+        offsetY = (int)Math.round(offsetY * displayScale);
 
         if( Math.abs( cursor.getX( ) - getMascot( ).getAnchor( ).x + offsetX ) >= 5 )
         {

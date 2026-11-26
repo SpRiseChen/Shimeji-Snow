@@ -44,8 +44,8 @@ public final class Photo
 		Rectangle box = null;
 		for( final Mascot mascot : mascots )
 		{
-			final Rectangle bounds = mascot.getWindow( ).asComponent( ).getBounds( );
-			box = box == null ? new Rectangle( bounds ) : box.union( bounds );
+			for (final Rectangle bounds : mascot.getWindow().displayRegions())
+				box = box == null ? new Rectangle(bounds) : box.union(bounds);
 		}
 		if( box == null || box.isEmpty( ) )
 			return;

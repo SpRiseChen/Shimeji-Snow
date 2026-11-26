@@ -203,6 +203,31 @@ public abstract class Environment
         return ScreenTraversal.neighbor(bounds, source, edge, fraction);
     }
 
+    private com.group_finity.mascot.image.ScreenProjection.Layout projectionLayout;
+    private long projectionLayoutTime;
+
+    public synchronized com.group_finity.mascot.image.ScreenProjection.Layout getProjectionLayout() {
+        long now = System.nanoTime();
+        if (projectionLayout == null || now - projectionLayoutTime > 500_000_000L) {
+            projectionLayout = createProjectionLayout();
+            projectionLayoutTime = now;
+        }
+        return projectionLayout;
+    }
+
+    protected com.group_finity.mascot.image.ScreenProjection.Layout createProjectionLayout() {
+        var screens = new java.util.ArrayList<com.group_finity.mascot.image.ScreenProjection.Screen>();
+        var links = new java.util.ArrayList<com.group_finity.mascot.image.ScreenProjection.Link>();
+        for (int i = 0; i < getScreenCount(); i++) {
+            screens.add(new com.group_finity.mascot.image.ScreenProjection.Screen(getScreenWorkArea(i)));
+            for (ScreenTraversal.Edge edge : ScreenTraversal.Edge.values()) {
+                int target = getAdjacentScreen(i, edge, 0.5);
+                if (target >= 0) links.add(new com.group_finity.mascot.image.ScreenProjection.Link(i, target, edge, 0, 1));
+            }
+        }
+        return new com.group_finity.mascot.image.ScreenProjection.Layout(screens, links, getPrimaryScreenIndex());
+    }
+
     public Collection<Area> getScreens( )
     {
         return complexScreen.getAreas( );

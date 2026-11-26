@@ -215,7 +215,7 @@ public final class HeadPatDirector
                 patId = target.getId( );
             }
 
-            final Rectangle bounds = target.getDisplayBounds( );
+            final Rectangle bounds = target.getDisplayBounds(pointer);
             final int centerX = bounds.x + bounds.width / 2;
             final int cursorX = pointer != null ? pointer.x : centerX;
             final boolean wasPatting = state.patting;

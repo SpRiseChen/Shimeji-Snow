@@ -521,7 +521,7 @@ public class Mascot
         // lightweight popups expect the shimeji window to draw them if they fall inside the shimeji window boundary
         // as the shimeji window can't support this we need to set them to heavyweight
         popup.setLightWeightPopupEnabled( false );
-        popup.show( getWindow( ).asComponent( ), x, y );
+        getWindow().showPopup(popup, x, y);
         OutsideMenuDismissal.watch( popup, ( ) -> popup.setVisible( false ) );
     }
 
@@ -555,7 +555,8 @@ public class Mascot
         {
             final boolean grounded = getEnvironment( ).getFloor( ).isOn( getAnchor( ) );
             renderer.publish( new Point( getAnchor( ) ), getImage( ),
-                    renderSnap || (grounded && !renderGrounded) || isDragging( ) || isMouseButtonDown( ) || isHotspotClicked( ), System.nanoTime( ) );
+                    renderSnap || (grounded && !renderGrounded) || isDragging( ) || isMouseButtonDown( ) || isHotspotClicked( ), System.nanoTime( ),
+                    getWindow().supportsProjections() ? getEnvironment().getProjectionContext() : null );
             renderGrounded = grounded;
             renderSnap = false;
             // Standalone/manual callers do not have a Manager's render clock.
@@ -767,6 +768,11 @@ public class Mascot
     {
         final Rectangle displayed = renderer.displayBounds( );
         return displayed != null ? displayed : getBounds( );
+    }
+
+    public Rectangle getDisplayBounds(Point pointer) {
+        Rectangle bounds = getWindow().displayBounds(pointer);
+        return bounds != null ? bounds : getDisplayBounds();
     }
 
     boolean needsRender( ) { return renderer.needsRender( ); }

@@ -543,6 +543,11 @@ class WindowsEnvironment extends Environment
         return DpiScale.adjacentScreen(source, edge, fraction);
     }
 
+    @Override
+    protected com.group_finity.mascot.image.ScreenProjection.Layout createProjectionLayout() {
+        return DpiScale.projectionLayout();
+    }
+
     /** Locate the known device using its physical centre; keep its origin when converting rcWork. */
     private static Rectangle monitorWorkAreaAt(final GraphicsConfiguration gc)
     {

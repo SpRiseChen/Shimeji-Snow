@@ -99,6 +99,19 @@ public class MascotEnvironment
 
     public int getScreenRevision() { return screenRevision; }
 
+    public com.group_finity.mascot.image.ScreenProjection.Context getProjectionContext() {
+        getWorkArea();
+        return new com.group_finity.mascot.image.ScreenProjection.Context(impl.getProjectionLayout(), currentScreen,
+                canTraverseScreens(), impl.getOccludedArea());
+    }
+
+    public double getDisplayScale() {
+        if (!mascot.getWindow().supportsProjections()) return 1;
+        var context = getProjectionContext();
+        return !context.connected() || context.layout().screens().isEmpty() ? 1
+                : context.layout().scale(Math.min(context.source(), context.layout().screens().size() - 1));
+    }
+
     public ScreenTraversal.Step move(Point from, Point to) {
         Rectangle source = getWorkArea().toRectangle();
         if (!canTraverseScreens()) {
